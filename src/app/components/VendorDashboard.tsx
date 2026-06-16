@@ -23,20 +23,21 @@ import {
   getClientsByVehicleType,
   getClientsByServiceType
 } from "../data/mockClients";
-import { getCDAById, getVendedorById } from "../data/mockCDAs";
+import { useCDAData } from "../../hooks/useCDAData";
 import { Card } from "./ui/card";
 import logo from "figma:asset/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
 
 export function VendorDashboard() {
   const navigate = useNavigate();
+  const { cdas } = useCDAData();
   const { cdaId, vendedorId } = useParams();
   const [activeTab, setActiveTab] = useState<"dashboard" | "ranking" | "recorrido">("dashboard");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetTitle, setSheetTitle] = useState("");
   const [sheetClients, setSheetClients] = useState<typeof allClients>([]);
 
-  const cda = getCDAById(Number(cdaId));
-  const vendedor = getVendedorById(Number(cdaId), Number(vendedorId));
+  const cda = cdas.find((item) => item.id === Number(cdaId));
+  const vendedor = cda?.vendedores.find((v) => v.id === Number(vendedorId));
 
   const handleLogout = () => {
     localStorage.removeItem("userRole");
