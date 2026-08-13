@@ -2,17 +2,15 @@ import { useState } from "react";
 import { Card } from "./ui/card";
 import {
   Building2, Users, TrendingUp, ChevronRight,
-  MapPin, Phone, LogOut, Trophy, Medal, Award, FileSpreadsheet,
+  MapPin, Phone, LogOut, Trophy, Medal, Award,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import logo from "../../../assets/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
 import { useCDAData } from "../../hooks/useCDAData";
-import { ExcelUploader } from "./ExcelUploader";
 
 export function AdminCDAList() {
   const navigate = useNavigate();
   const [view, setView] = useState<"list" | "ranking">("list");
-  const [showUploader, setShowUploader] = useState(false);
 
   // ← único cambio de datos: todo viene del hook
   const cdaHook = useCDAData();
@@ -74,21 +72,6 @@ export function AdminCDAList() {
           <div className="flex items-center justify-between">
             <img src={logo} alt="Grupo Cardisel" className="h-10 w-auto" />
             <div className="flex items-center gap-2">
-              {/* Botón de carga de Excel */}
-              <button
-                onClick={() => setShowUploader(!showUploader)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  cdaHook.lastUpdate
-                    ? "bg-green-100 text-green-700 hover:bg-green-200"
-                    : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                }`}
-                title="Mostrar u ocultar el panel de Excel"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {cdaHook.lastUpdate ? "Excel activo" : "Excel"}
-                </span>
-              </button>
               <button
                 onClick={() => setShowMetaPanel((prev) => !prev)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
@@ -108,13 +91,6 @@ export function AdminCDAList() {
           </div>
         </div>
       </div>
-
-      {/* Panel de carga (se despliega debajo del header) */}
-      {showUploader && (
-        <div className="max-w-lg mx-auto mt-3 px-4">
-          <ExcelUploader hook={cdaHook} onClose={() => setShowUploader(false)} />
-        </div>
-      )}
 
       {showMetaPanel && (
         <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 px-4 md:px-6 lg:px-8">
@@ -178,11 +154,6 @@ export function AdminCDAList() {
           </div>
           <p className="text-blue-100 text-sm md:text-base">
             Gestión de Centros de Diagnóstico
-            {cdaHook.lastUpdate && (
-              <span className="ml-2 text-blue-200 text-xs">
-                · Datos: {cdaHook.lastUpdate.mes} ({new Date(cdaHook.lastUpdate.timestamp).toLocaleDateString("es-CO")})
-              </span>
-            )}
           </p>
         </div>
       </div>

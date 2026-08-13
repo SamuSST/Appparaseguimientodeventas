@@ -10,13 +10,6 @@ export interface Vendedor {
   desempeñoMensual: number; // porcentaje
 }
 
-export interface ExcelMetrics {
-  motos: number;
-  livianos: number;
-  pesados: number;
-  total: number;
-}
-
 export interface CDA {
   id: number;
   nombre: string;
@@ -28,10 +21,6 @@ export interface CDA {
   clientesMes: number;
   metaMensual: number; // Meta mensual del CDA
   desempeñoPromedio: number; // porcentaje
-  servicios?: ExcelMetrics;
-  preventivas?: ExcelMetrics;
-  rtms?: ExcelMetrics;
-  facturacion?: ExcelMetrics;
 }
 
 export const mockCDAs: CDA[] = [

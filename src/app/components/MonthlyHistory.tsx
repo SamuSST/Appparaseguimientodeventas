@@ -1,5 +1,4 @@
 import { Card } from "./ui/card";
-import type { ExcelMetrics } from "../data/mockCDAs";
 
 export interface MonthlySnapshot {
   mes: string;
@@ -8,9 +7,6 @@ export interface MonthlySnapshot {
   achieved: number;
   meta: number;
   progress: number;
-  rtms?: ExcelMetrics;
-  preventivas?: ExcelMetrics;
-  facturacion?: ExcelMetrics;
 }
 
 interface MonthlyHistoryProps {
@@ -32,7 +28,7 @@ export function MonthlyHistory({ snapshots, showVendedores, onToggleVendedores }
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
           <h2 className="font-semibold text-gray-900 text-lg">Historial mensual</h2>
-          <p className="text-sm text-gray-600">Revisa el desempeño por cada mes cargado desde Excel.</p>
+          <p className="text-sm text-gray-600">Revisa el desempeño histórico mensual.</p>
         </div>
         <button
           onClick={onToggleVendedores}
@@ -44,7 +40,7 @@ export function MonthlyHistory({ snapshots, showVendedores, onToggleVendedores }
 
       {snapshots.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-600">
-          No hay datos mensuales cargados. Carga un Excel con hojas de mes para ver el histórico.
+          No hay datos mensuales disponibles en este momento.
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
