@@ -1,4 +1,5 @@
 import { Users, User } from "lucide-react";
+import { allClients } from "../data/mockClients";
 
 interface ServiceType {
   type: string;
@@ -13,12 +14,16 @@ interface ServiceTypeStatsProps {
   onCategoryClick: (category: "publico" | "particular") => void;
 }
 
-const serviceData: ServiceType[] = [
-  { type: "Públicos", count: 15, icon: Users, color: "text-purple-600", bgColor: "bg-purple-100", key: "publico" },
-  { type: "Particulares", count: 27, icon: User, color: "text-blue-600", bgColor: "bg-blue-100", key: "particular" },
+const serviceTypes: ServiceType[] = [
+  { type: "Públicos", count: 0, icon: Users, color: "text-purple-600", bgColor: "bg-purple-100", key: "publico" },
+  { type: "Particulares", count: 0, icon: User, color: "text-blue-600", bgColor: "bg-blue-100", key: "particular" },
 ];
 
 export function ServiceTypeStats({ onCategoryClick }: ServiceTypeStatsProps) {
+  const serviceData = serviceTypes.map((service) => ({
+    ...service,
+    count: allClients.filter((client) => client.tipoServicio === service.key).length,
+  }));
   const total = serviceData.reduce((sum, item) => sum + item.count, 0);
 
   return (
@@ -28,7 +33,7 @@ export function ServiceTypeStats({ onCategoryClick }: ServiceTypeStatsProps) {
       <div className="space-y-3">
         {serviceData.map((service) => {
           const Icon = service.icon;
-          const percentage = ((service.count / total) * 100).toFixed(0);
+          const percentage = total ? (service.count / total) * 100 : 0;
           
           return (
             <div 
@@ -56,7 +61,7 @@ export function ServiceTypeStats({ onCategoryClick }: ServiceTypeStatsProps) {
       <div className="mt-3">
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
           {serviceData.map((service, index) => {
-            const percentage = (service.count / total) * 100;
+            const percentage = total ? (service.count / total) * 100 : 0;
             return (
               <div
                 key={index}

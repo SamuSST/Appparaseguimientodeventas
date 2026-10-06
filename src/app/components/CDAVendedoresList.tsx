@@ -11,6 +11,20 @@ export function CDAVendedoresList() {
   const { cdaId } = useParams();
   const cda = cdas.find((item) => item.id === Number(cdaId));
 
+  const duplicateVendorNames = useMemo(() => {
+    if (!cda) return [];
+
+    const counts = new Map<string, number>();
+    cda.vendedores.forEach((vendedor) => {
+      const normalized = vendedor.nombre.trim().toLowerCase();
+      if (!normalized) return;
+      counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([name, count]) => ({ name, count }));
+  }, [cda]);
+
   const handleLogout = () => {
     localStorage.removeItem("userRole");
     localStorage.removeItem("userName");
@@ -24,18 +38,6 @@ export function CDAVendedoresList() {
       </div>
     );
   }
-
-  const duplicateVendorNames = useMemo(() => {
-    const counts = new Map<string, number>();
-    cda.vendedores.forEach((vendedor) => {
-      const normalized = vendedor.nombre.trim().toLowerCase();
-      if (!normalized) return;
-      counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
-    });
-    return Array.from(counts.entries())
-      .filter(([, count]) => count > 1)
-      .map(([name, count]) => ({ name, count }));
-  }, [cda.vendedores]);
 
   return (
     <div className="min-h-screen bg-gray-100">

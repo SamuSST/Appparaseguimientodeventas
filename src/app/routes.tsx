@@ -1,10 +1,10 @@
-import { createBrowserRouter } from "react-router";
+import { createHashRouter } from "react-router";
 import { Login } from "./components/Login";
 import { AdminCDAList } from "./components/AdminCDAList";
 import { CDAVendedoresList } from "./components/CDAVendedoresList";
 import { VendorDashboard } from "./components/VendorDashboard";
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: "/",
     Component: Login,

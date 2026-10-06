@@ -13,7 +13,7 @@ interface MetricCardProps {
 
 export function MetricCard({ title, value, percentage, icon: Icon, period, color, onClick }: MetricCardProps) {
   const isDaily = value !== undefined && percentage === undefined;
-  const displayPercentage = percentage || 0;
+  const displayPercentage = Math.max(0, Math.min(percentage ?? 0, 100));
   const isOnTrack = displayPercentage >= 75;
 
   return (

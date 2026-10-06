@@ -1,4 +1,4 @@
-import { Calendar, TrendingUp, Target, ArrowLeft, LogOut } from "lucide-react";
+import { Calendar, TrendingUp, Target, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { DashboardHeader } from "./DashboardHeader";
@@ -38,6 +38,18 @@ export function VendorDashboard() {
 
   const cda = cdas.find((item) => item.id === Number(cdaId));
   const vendedor = cda?.vendedores.find((v) => v.id === Number(vendedorId));
+  const latestClientDate = allClients.reduce(
+    (latest, client) => client.fecha > latest ? client.fecha : latest,
+    allClients[0]?.fecha ?? "",
+  );
+  const dailyClients = getClientsByDate(latestClientDate);
+  const displayDate = latestClientDate
+    ? new Date(`${latestClientDate}T00:00:00`).toLocaleDateString("es-CO", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "Sin datos";
 
   const handleLogout = () => {
     localStorage.removeItem("userRole");
@@ -54,9 +66,8 @@ export function VendorDashboard() {
   }
 
   const handleDailyClick = () => {
-    const todayClients = getClientsByDate("2026-03-09");
     setSheetTitle("Clientes de Hoy");
-    setSheetClients(todayClients);
+    setSheetClients(dailyClients);
     setSheetOpen(true);
   };
 
@@ -176,9 +187,9 @@ export function VendorDashboard() {
           <div className="space-y-3">
             <MetricCard
               title="Hoy"
-              value={3}
+              value={dailyClients.length}
               icon={Calendar}
-              period="9 de Marzo, 2026"
+              period={displayDate}
               color="bg-blue-600"
               onClick={handleDailyClick}
             />

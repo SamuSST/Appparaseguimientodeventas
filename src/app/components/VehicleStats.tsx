@@ -1,4 +1,5 @@
 import { Car, Bike, Truck } from "lucide-react";
+import { allClients } from "../data/mockClients";
 
 interface VehicleCategory {
   type: string;
@@ -12,13 +13,17 @@ interface VehicleStatsProps {
   onCategoryClick: (category: "carro" | "moto" | "pesado") => void;
 }
 
-const vehicleData: VehicleCategory[] = [
-  { type: "Carros", count: 28, icon: Car, color: "bg-blue-500", key: "carro" },
-  { type: "Motos", count: 12, icon: Bike, color: "bg-green-500", key: "moto" },
-  { type: "Pesados", count: 2, icon: Truck, color: "bg-orange-500", key: "pesado" },
+const vehicleTypes: VehicleCategory[] = [
+  { type: "Carros", count: 0, icon: Car, color: "bg-blue-500", key: "carro" },
+  { type: "Motos", count: 0, icon: Bike, color: "bg-green-500", key: "moto" },
+  { type: "Pesados", count: 0, icon: Truck, color: "bg-orange-500", key: "pesado" },
 ];
 
 export function VehicleStats({ onCategoryClick }: VehicleStatsProps) {
+  const vehicleData = vehicleTypes.map((vehicle) => ({
+    ...vehicle,
+    count: allClients.filter((client) => client.tipoVehiculo === vehicle.key).length,
+  }));
   const total = vehicleData.reduce((sum, item) => sum + item.count, 0);
 
   return (
@@ -28,7 +33,8 @@ export function VehicleStats({ onCategoryClick }: VehicleStatsProps) {
       <div className="space-y-3">
         {vehicleData.map((vehicle) => {
           const Icon = vehicle.icon;
-          const percentage = ((vehicle.count / total) * 100).toFixed(0);
+          const percentage = total ? (vehicle.count / total) * 100 : 0;
+          const displayPercentage = Math.round(percentage);
           
           return (
             <div 
@@ -51,7 +57,7 @@ export function VehicleStats({ onCategoryClick }: VehicleStatsProps) {
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
-                  <span className="text-xs text-gray-600 min-w-[40px] text-right">{percentage}%</span>
+                  <span className="text-xs text-gray-600 min-w-[40px] text-right">{displayPercentage}%</span>
                 </div>
               </div>
             </div>

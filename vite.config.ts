@@ -17,6 +17,8 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig({
+  // Ruta base obligatoria para que GitHub Pages encuentre los archivos del proyecto
+  base: "/Appparaseguimientodeventas/",
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if

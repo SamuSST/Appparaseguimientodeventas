@@ -27,11 +27,20 @@ export function DailyTrendChart() {
     });
 
   // Calcular tendencia
-  const promedio = chartData.reduce((sum, item) => sum + item.clientes, 0) / chartData.length;
   const ultimosDias = chartData.slice(-3);
   const promedioReciente = ultimosDias.reduce((sum, item) => sum + item.clientes, 0) / ultimosDias.length;
-  const tendencia = promedioReciente > promedio ? "positiva" : "negativa";
-  const diferencia = Math.abs(Math.round(((promedioReciente - promedio) / promedio) * 100));
+  const diasAnteriores = chartData.slice(-6, -3);
+  const promedioAnterior = diasAnteriores.length
+    ? diasAnteriores.reduce((sum, item) => sum + item.clientes, 0) / diasAnteriores.length
+    : 0;
+  const cambio = promedioAnterior
+    ? Math.round(((promedioReciente - promedioAnterior) / promedioAnterior) * 100)
+    : 0;
+  const tendencia = cambio >= 0 ? "positiva" : "negativa";
+  const diferencia = Math.abs(cambio);
+  const promedio = chartData.length
+    ? chartData.reduce((sum, item) => sum + item.clientes, 0) / chartData.length
+    : 0;
 
   return (
     <Card className="p-4">

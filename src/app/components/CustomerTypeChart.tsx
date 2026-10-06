@@ -41,7 +41,10 @@ export function CustomerTypeChart() {
 
   const totalRecurrentes = chartData.reduce((sum, item) => sum + item.recurrentes, 0);
   const totalNuevos = chartData.reduce((sum, item) => sum + item.nuevos, 0);
-  const porcentajeRecurrentes = Math.round((totalRecurrentes / (totalRecurrentes + totalNuevos)) * 100);
+  const totalClientes = totalRecurrentes + totalNuevos;
+  const porcentajeRecurrentes = totalClientes
+    ? Math.round((totalRecurrentes / totalClientes) * 100)
+    : 0;
 
   return (
     <Card className="p-4">
