@@ -2,6 +2,7 @@ import { Card } from "./ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { Award } from "lucide-react";
 import { allClients } from "../data/mockClients";
+import { roundedShares } from "../data/metrics";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
@@ -26,11 +27,10 @@ export function TopBrandsChart() {
     })),
     ...(otherBrandsCount > 0 ? [{ name: "Otras", value: otherBrandsCount }] : []),
   ];
-  const totalBrands = chartData.reduce((sum, item) => sum + item.value, 0);
-
-  const chartDataWithShares = chartData.map((entry) => ({
+  const shares = roundedShares(chartData.map((entry) => entry.value));
+  const chartDataWithShares = chartData.map((entry, index) => ({
     ...entry,
-    share: totalBrands ? (entry.value / totalBrands) * 100 : 0,
+    share: shares[index],
   }));
 
   return (
