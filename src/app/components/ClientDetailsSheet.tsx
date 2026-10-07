@@ -1,6 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Badge } from "./ui/badge";
 import { Car, Bike, Truck, Calendar } from "lucide-react";
+import { parseDateKey } from "../data/metrics";
 
 interface Client {
   id: number;
@@ -80,10 +81,10 @@ export function ClientDetailsSheet({ open, onOpenChange, title, clients }: Clien
                         </span>
                         <div className="flex items-center gap-1 text-gray-500">
                           <Calendar className="w-4 h-4" />
-                          <span>{new Date(client.fecha).toLocaleDateString('es-CO', { 
-                            day: 'numeric', 
-                            month: 'short',
-                            year: 'numeric'
+                          <span>{parseDateKey(client.fecha).toLocaleDateString("es-CO", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
                           })}</span>
                         </div>
                       </div>

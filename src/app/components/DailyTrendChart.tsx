@@ -2,42 +2,42 @@ import { Card } from "./ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp } from "lucide-react";
 import { allClients } from "../data/mockClients";
+import { parseDateKey, toDateKey } from "../data/metrics";
 
 export function DailyTrendChart() {
-  // Agrupar por fecha
   const dailyData = allClients.reduce((acc, client) => {
-    const date = client.fecha;
-    acc[date] = (acc[date] || 0) + 1;
+    acc[client.fecha] = (acc[client.fecha] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // Convertir a array y ordenar
-  const chartData = Object.entries(dailyData)
-    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-    .slice(-10) // Últimos 10 días
-    .map(([fecha, clientes]) => {
-      const date = new Date(fecha);
-      const day = date.getDate();
-      const month = date.toLocaleDateString("es-ES", { month: "short" });
-      
-      return {
-        fecha: `${day} ${month}`,
-        clientes,
-      };
-    });
+  const latestDateKey = allClients.reduce(
+    (latest, client) => (client.fecha > latest ? client.fecha : latest),
+    "",
+  );
+  const latestDate = latestDateKey ? parseDateKey(latestDateKey) : new Date();
+  const chartData = Array.from({ length: 10 }, (_, index) => {
+    const date = new Date(latestDate);
+    date.setDate(latestDate.getDate() - 9 + index);
+    const dateKey = toDateKey(date);
+    return {
+      fecha: date.toLocaleDateString("es-CO", { day: "numeric", month: "short" }),
+      clientes: dailyData[dateKey] ?? 0,
+    };
+  });
 
-  // Calcular tendencia
-  const ultimosDias = chartData.slice(-3);
-  const promedioReciente = ultimosDias.reduce((sum, item) => sum + item.clientes, 0) / ultimosDias.length;
-  const diasAnteriores = chartData.slice(-6, -3);
-  const promedioAnterior = diasAnteriores.length
-    ? diasAnteriores.reduce((sum, item) => sum + item.clientes, 0) / diasAnteriores.length
-    : 0;
-  const cambio = promedioAnterior
-    ? Math.round(((promedioReciente - promedioAnterior) / promedioAnterior) * 100)
-    : 0;
-  const tendencia = cambio >= 0 ? "positiva" : "negativa";
-  const diferencia = Math.abs(cambio);
+  const recentDays = chartData.slice(-3);
+  const previousDays = chartData.slice(-6, -3);
+  const average = (values: typeof chartData) =>
+    values.length ? values.reduce((sum, item) => sum + item.clientes, 0) / values.length : 0;
+  const recentAverage = average(recentDays);
+  const previousAverage = average(previousDays);
+  const change = previousAverage
+    ? Math.round(((recentAverage - previousAverage) / previousAverage) * 100)
+    : null;
+  const trend = change === null || change >= 0 ? "positiva" : "negativa";
+  const trendLabel = change === null
+    ? "Sin comparación"
+    : `${change >= 0 ? "+" : "-"}${Math.abs(change)}%`;
   const promedio = chartData.length
     ? chartData.reduce((sum, item) => sum + item.clientes, 0) / chartData.length
     : 0;
@@ -51,8 +51,8 @@ export function DailyTrendChart() {
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-500">Últimos 3 días</p>
-          <p className={`text-sm font-bold ${tendencia === "positiva" ? "text-emerald-600" : "text-red-600"}`}>
-            {tendencia === "positiva" ? "+" : "-"}{diferencia}%
+          <p className={`text-sm font-bold ${trend === "positiva" ? "text-emerald-600" : "text-red-600"}`}>
+            {trendLabel}
           </p>
         </div>
       </div>
@@ -66,6 +66,7 @@ export function DailyTrendChart() {
             stroke="#6b7280"
           />
           <YAxis 
+            allowDecimals={false}
             tick={{ fontSize: 11 }}
             stroke="#6b7280"
           />
@@ -90,8 +91,8 @@ export function DailyTrendChart() {
       </ResponsiveContainer>
       
       <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-        <p className="text-xs text-gray-500">Promedio: {Math.round(promedio)} clientes/día</p>
-        <p className="text-xs text-gray-500">Últimos 10 días</p>
+        <p className="text-xs text-gray-500">Promedio: {promedio.toFixed(1)} clientes/día</p>
+        <p className="text-xs text-gray-500">10 días calendario</p>
       </div>
     </Card>
   );

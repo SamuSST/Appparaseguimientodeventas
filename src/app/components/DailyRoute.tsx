@@ -1,4 +1,4 @@
-import { MapPin, Clock, FileText, Image as ImageIcon } from "lucide-react";
+import { MapPin, Clock, FileText } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router";
 import { Card } from "./ui/card";
@@ -6,14 +6,30 @@ import { CheckInButton } from "./CheckInButton";
 import { getVisitsByVendedor, type Visit } from "../data/mockVisits";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { toast } from "sonner";
+import { toDateKey } from "../data/metrics";
 
 const STORAGE_KEY = "vendor_visits";
+
+function isVisit(value: unknown): value is Visit {
+  if (!value || typeof value !== "object") return false;
+  const visit = value as Partial<Visit>;
+  return Number.isFinite(visit.id)
+    && Number.isFinite(visit.vendedorId)
+    && typeof visit.fecha === "string"
+    && typeof visit.hora === "string"
+    && !!visit.ubicacion
+    && Number.isFinite(visit.ubicacion.lat)
+    && Number.isFinite(visit.ubicacion.lng)
+    && typeof visit.ubicacion.direccion === "string"
+    && (visit.foto === undefined || typeof visit.foto === "string")
+    && (visit.notas === undefined || typeof visit.notas === "string");
+}
 
 export function DailyRoute() {
   const { vendedorId } = useParams();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
-  const today = new Date().toISOString().split("T")[0];
+  const today = toDateKey(new Date());
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // Cargar visitas al montar el componente
@@ -22,28 +38,27 @@ export function DailyRoute() {
       // Obtener visitas mock
       const mockVisits = getVisitsByVendedor(Number(vendedorId), today);
 
-      // Obtener visitas guardadas del localStorage
-      const savedVisitsJSON = localStorage.getItem(STORAGE_KEY);
-      let savedVisits: Visit[] = [];
-
-      if (savedVisitsJSON) {
-        try {
-          const allSavedVisits = JSON.parse(savedVisitsJSON) as Visit[];
-          // Filtrar por vendedor y fecha actual
-          savedVisits = allSavedVisits.filter(
-            v => v.vendedorId === Number(vendedorId) && v.fecha === today
-          );
-        } catch (error) {
-          console.error("Error al cargar visitas guardadas:", error);
+      try {
+        const savedVisitsJSON = localStorage.getItem(STORAGE_KEY);
+        const allSavedVisits: unknown = savedVisitsJSON ? JSON.parse(savedVisitsJSON) : [];
+        if (!Array.isArray(allSavedVisits)) {
+          throw new Error("El formato de las visitas guardadas no es válido.");
         }
+
+        const savedVisits = allSavedVisits.filter(
+          (visit): visit is Visit =>
+            isVisit(visit) && visit.vendedorId === Number(vendedorId) && visit.fecha === today,
+        );
+        const visitsById = new Map<number, Visit>();
+        [...mockVisits, ...savedVisits].forEach((visit) => visitsById.set(visit.id, visit));
+        setVisits([...visitsById.values()].sort((a, b) => a.hora.localeCompare(b.hora)));
+      } catch (error) {
+        console.error("No se pudieron cargar las visitas guardadas:", error);
+        toast.error("No se pudieron cargar las visitas guardadas.");
+        setVisits([...mockVisits].sort((a, b) => a.hora.localeCompare(b.hora)));
       }
-
-      // Combinar visitas mock y guardadas, ordenadas por hora
-      const allVisits = [...mockVisits, ...savedVisits].sort((a, b) =>
-        a.hora.localeCompare(b.hora)
-      );
-
-      setVisits(allVisits);
+    } else {
+      setVisits([]);
     }
   }, [vendedorId, today]);
 
@@ -56,31 +71,28 @@ export function DailyRoute() {
       id: Date.now(),
       vendedorId: Number(vendedorId),
       fecha: today,
-      hora: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }),
+      hora: new Date().toLocaleTimeString("es-CO", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }),
       ubicacion,
       foto,
       notas
     };
 
-    // Actualizar estado local
-    const updatedVisits = [...visits, newVisit].sort((a, b) => a.hora.localeCompare(b.hora));
-    setVisits(updatedVisits);
-
-    // Guardar en localStorage
     try {
       const savedVisitsJSON = localStorage.getItem(STORAGE_KEY);
-      let allSavedVisits: Visit[] = [];
-
-      if (savedVisitsJSON) {
-        allSavedVisits = JSON.parse(savedVisitsJSON);
+      const allSavedVisits: unknown = savedVisitsJSON ? JSON.parse(savedVisitsJSON) : [];
+      if (!Array.isArray(allSavedVisits)) {
+        throw new Error("El formato de las visitas guardadas no es válido.");
       }
 
-      // Agregar la nueva visita
-      allSavedVisits.push(newVisit);
-
-      // Guardar de vuelta en localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allSavedVisits));
-
+      const persistedVisits = allSavedVisits.filter(isVisit);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...persistedVisits, newVisit]));
+      setVisits((current) =>
+        [...current, newVisit].sort((a, b) => a.hora.localeCompare(b.hora)),
+      );
       toast.success("Visita registrada correctamente");
 
       // Scroll suave al timeline después de un breve delay
@@ -89,7 +101,7 @@ export function DailyRoute() {
       }, 100);
     } catch (error) {
       console.error("Error al guardar la visita:", error);
-      toast.error("La visita se registró pero no se pudo guardar");
+      toast.error("No se pudo guardar la visita. Libera espacio del navegador e inténtalo de nuevo.");
     }
   };
 

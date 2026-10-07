@@ -1,5 +1,6 @@
 import { Users, User } from "lucide-react";
 import { allClients } from "../data/mockClients";
+import { roundedShares } from "../data/metrics";
 
 interface ServiceType {
   type: string;
@@ -24,16 +25,16 @@ export function ServiceTypeStats({ onCategoryClick }: ServiceTypeStatsProps) {
     ...service,
     count: allClients.filter((client) => client.tipoServicio === service.key).length,
   }));
-  const total = serviceData.reduce((sum, item) => sum + item.count, 0);
+  const percentages = roundedShares(serviceData.map((service) => service.count));
 
   return (
     <div className="bg-white rounded-xl shadow-md p-4">
       <h3 className="text-sm font-semibold text-gray-900 mb-4">Tipo de Servicio</h3>
       
       <div className="space-y-3">
-        {serviceData.map((service) => {
+        {serviceData.map((service, index) => {
           const Icon = service.icon;
-          const percentage = total ? (service.count / total) * 100 : 0;
+          const percentage = percentages[index];
           
           return (
             <div 
@@ -61,7 +62,7 @@ export function ServiceTypeStats({ onCategoryClick }: ServiceTypeStatsProps) {
       <div className="mt-3">
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
           {serviceData.map((service, index) => {
-            const percentage = total ? (service.count / total) * 100 : 0;
+            const percentage = percentages[index];
             return (
               <div
                 key={index}

@@ -3,41 +3,36 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Users } from "lucide-react";
 import { allClients } from "../data/mockClients";
 import { useId } from "react";
+import { parseDateKey, toDateKey } from "../data/metrics";
 
 export function CustomerTypeChart() {
   const id = useId();
-  // Agrupar por fecha y tipo de cliente
-  const dateData = allClients.reduce((acc, client) => {
+  const latestDateKey = allClients.reduce(
+    (latest, client) => (client.fecha > latest ? client.fecha : latest),
+    "",
+  );
+  const latestDate = latestDateKey ? parseDateKey(latestDateKey) : new Date();
+  const dateData = allClients.reduce<Record<string, { recurrentes: number; nuevos: number }>>((acc, client) => {
     const date = client.fecha;
-    
-    if (!acc[date]) {
-      acc[date] = { recurrentes: 0, nuevos: 0 };
-    }
-    
+    if (!acc[date]) acc[date] = { recurrentes: 0, nuevos: 0 };
     if (client.esRecurrente) {
       acc[date].recurrentes += 1;
     } else {
       acc[date].nuevos += 1;
     }
-    
     return acc;
-  }, {} as Record<string, { recurrentes: number; nuevos: number }>);
+  }, {});
 
-  // Convertir a array y ordenar por fecha
-  const chartData = Object.entries(dateData)
-    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-    .slice(-7) // Últimos 7 días
-    .map(([fecha, data]) => {
-      const date = new Date(fecha);
-      const day = date.getDate();
-      const month = date.toLocaleDateString("es-ES", { month: "short" });
-      
-      return {
-        fecha: `${day} ${month}`,
-        recurrentes: data.recurrentes,
-        nuevos: data.nuevos,
-      };
-    });
+  const chartData = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(latestDate);
+    date.setDate(latestDate.getDate() - 6 + index);
+    const data = dateData[toDateKey(date)] ?? { recurrentes: 0, nuevos: 0 };
+    return {
+      fecha: date.toLocaleDateString("es-CO", { day: "numeric", month: "short" }),
+      recurrentes: data.recurrentes,
+      nuevos: data.nuevos,
+    };
+  });
 
   const totalRecurrentes = chartData.reduce((sum, item) => sum + item.recurrentes, 0);
   const totalNuevos = chartData.reduce((sum, item) => sum + item.nuevos, 0);
@@ -78,6 +73,7 @@ export function CustomerTypeChart() {
             stroke="#6b7280"
           />
           <YAxis 
+            allowDecimals={false}
             tick={{ fontSize: 11 }}
             stroke="#6b7280"
           />

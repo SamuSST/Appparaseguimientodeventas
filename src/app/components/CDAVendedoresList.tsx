@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router";
 import { useCDAData } from "../../hooks/useCDAData";
 import { VendorListPanel } from "./VendorListPanel";
 import logo from "figma:asset/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
+import { percentageLabel, percentageOf } from "../data/metrics";
 
 export function CDAVendedoresList() {
   const navigate = useNavigate();
@@ -79,7 +80,9 @@ export function CDAVendedoresList() {
               <p className="text-xs text-blue-100">Clientes/mes</p>
             </div>
             <div className="bg-blue-700/50 rounded-lg p-2 text-center">
-              <p className="text-2xl font-bold">{cda.desempeñoPromedio}%</p>
+              <p className="text-2xl font-bold">
+                {percentageLabel(percentageOf(cda.clientesMes, cda.metaMensual))}
+              </p>
               <p className="text-xs text-blue-100">Desempeño</p>
             </div>
           </div>

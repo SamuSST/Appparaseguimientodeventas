@@ -14,14 +14,23 @@ export function TopBrandsChart() {
     return acc;
   }, {} as Record<string, number>);
 
-  // Convertir a array y ordenar
   const sortedBrands = Object.entries(brandCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6); // Top 6 marcas
+    .sort((a, b) => b[1] - a[1]);
+  const topBrands = sortedBrands.slice(0, 5);
+  const otherBrandsCount = sortedBrands.slice(5).reduce((sum, [, count]) => sum + count, 0);
 
-  const chartData = sortedBrands.map(([name, value]) => ({
-    name,
-    value,
+  const chartData = [
+    ...topBrands.map(([name, value]) => ({
+      name,
+      value,
+    })),
+    ...(otherBrandsCount > 0 ? [{ name: "Otras", value: otherBrandsCount }] : []),
+  ];
+  const totalBrands = chartData.reduce((sum, item) => sum + item.value, 0);
+
+  const chartDataWithShares = chartData.map((entry) => ({
+    ...entry,
+    share: totalBrands ? (entry.value / totalBrands) * 100 : 0,
   }));
 
   return (
@@ -34,16 +43,16 @@ export function TopBrandsChart() {
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>
           <Pie
-            data={chartData}
+            data={chartDataWithShares}
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            label={({ name, payload }) => `${name} ${Math.round(payload.share)}%`}
             outerRadius={70}
             fill="#8884d8"
             dataKey="value"
           >
-            {chartData.map((entry, index) => (
+            {chartDataWithShares.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>

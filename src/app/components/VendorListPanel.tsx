@@ -2,6 +2,7 @@ import { Card } from "./ui/card";
 import { ChevronRight, Mail, Phone, Target, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router";
 import type { CDA } from "../data/mockCDAs";
+import { percentageLabel, percentageWidth } from "../data/metrics";
 
 interface VendorListPanelProps {
   cda: CDA;
@@ -109,7 +110,7 @@ export function VendorListPanel({ cda, duplicateVendorNames }: VendorListPanelPr
                     <TrendingUp className="w-3 h-3 text-green-600" />
                     <p className="text-xs text-gray-600">Desempeño</p>
                   </div>
-                  <p className="text-lg font-bold text-gray-900">{vendedor.desempeñoMensual}%</p>
+                  <p className="text-lg font-bold text-gray-900">{percentageLabel(vendedor.desempeñoMensual)}</p>
                 </div>
               </div>
 
@@ -123,7 +124,7 @@ export function VendorListPanel({ cda, duplicateVendorNames }: VendorListPanelPr
                 <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${getStatusColor(vendedor.desempeñoMensual)} transition-all`}
-                    style={{ width: `${vendedor.desempeñoMensual}%` }}
+                    style={{ width: `${percentageWidth(vendedor.desempeñoMensual)}%` }}
                   />
                 </div>
               </div>

@@ -1,63 +1,7 @@
 import { Badge } from "./ui/badge";
 import { Car, Bike, Truck } from "lucide-react";
-
-interface Client {
-  id: number;
-  nombre: string;
-  vehiculo: string;
-  placa: string;
-  tipoVehiculo: "carro" | "moto" | "pesado";
-  tipoServicio: "publico" | "particular";
-  fecha: string;
-}
-
-const recentClients: Client[] = [
-  {
-    id: 1,
-    nombre: "Carlos Rodríguez",
-    vehiculo: "Toyota Corolla",
-    placa: "ABC-123",
-    tipoVehiculo: "carro",
-    tipoServicio: "particular",
-    fecha: "2026-03-09",
-  },
-  {
-    id: 2,
-    nombre: "María González",
-    vehiculo: "Suzuki GS150",
-    placa: "XYZ-789",
-    tipoVehiculo: "moto",
-    tipoServicio: "particular",
-    fecha: "2026-03-09",
-  },
-  {
-    id: 3,
-    nombre: "TransCarga S.A.",
-    vehiculo: "Chevrolet NPR",
-    placa: "TRK-456",
-    tipoVehiculo: "pesado",
-    tipoServicio: "publico",
-    fecha: "2026-03-08",
-  },
-  {
-    id: 4,
-    nombre: "Luis Martínez",
-    vehiculo: "Mazda 3",
-    placa: "DEF-321",
-    tipoVehiculo: "carro",
-    tipoServicio: "particular",
-    fecha: "2026-03-08",
-  },
-  {
-    id: 5,
-    nombre: "Taxi Express",
-    vehiculo: "Renault Logan",
-    placa: "TAX-654",
-    tipoVehiculo: "carro",
-    tipoServicio: "publico",
-    fecha: "2026-03-07",
-  },
-];
+import { allClients } from "../data/mockClients";
+import { parseDateKey } from "../data/metrics";
 
 const vehicleIcons = {
   carro: Car,
@@ -66,6 +10,10 @@ const vehicleIcons = {
 };
 
 export function ClientList() {
+  const recentClients = [...allClients]
+    .sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.hora ?? "").localeCompare(a.hora ?? ""))
+    .slice(0, 5);
+
   return (
     <div className="bg-white rounded-xl shadow-md p-4">
       <div className="flex items-center justify-between mb-4">
@@ -109,9 +57,9 @@ export function ClientList() {
                   <div className="flex items-center gap-3 mt-2">
                     <span className="text-xs font-mono text-gray-700">{client.placa}</span>
                     <span className="text-xs text-gray-500">
-                      {new Date(client.fecha).toLocaleDateString('es-CO', { 
-                        day: 'numeric', 
-                        month: 'short' 
+                      {parseDateKey(client.fecha).toLocaleDateString("es-CO", {
+                        day: "numeric",
+                        month: "short",
                       })}
                     </span>
                   </div>

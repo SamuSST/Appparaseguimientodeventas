@@ -6,8 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "predeploy": "pnpm build",
-    "deploy": "pnpm exec gh-pages -d dist"
+    "pages:deploy": "pnpm run build && pnpm exec gh-pages -d dist"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -85,8 +84,9 @@
     }
   },
   "pnpm": {
-    "overrides": {
-      "vite": "6.3.5"
-    }
+    "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "esbuild"
+    ]
   }
 }

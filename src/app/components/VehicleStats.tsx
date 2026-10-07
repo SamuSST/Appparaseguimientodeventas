@@ -1,5 +1,6 @@
 import { Car, Bike, Truck } from "lucide-react";
 import { allClients } from "../data/mockClients";
+import { roundedShares } from "../data/metrics";
 
 interface VehicleCategory {
   type: string;
@@ -25,16 +26,16 @@ export function VehicleStats({ onCategoryClick }: VehicleStatsProps) {
     count: allClients.filter((client) => client.tipoVehiculo === vehicle.key).length,
   }));
   const total = vehicleData.reduce((sum, item) => sum + item.count, 0);
+  const percentages = roundedShares(vehicleData.map((vehicle) => vehicle.count));
 
   return (
     <div className="bg-white rounded-xl shadow-md p-4">
       <h3 className="text-sm font-semibold text-gray-900 mb-4">Vehículos Atendidos</h3>
       
       <div className="space-y-3">
-        {vehicleData.map((vehicle) => {
+        {vehicleData.map((vehicle, index) => {
           const Icon = vehicle.icon;
-          const percentage = total ? (vehicle.count / total) * 100 : 0;
-          const displayPercentage = Math.round(percentage);
+          const percentage = percentages[index];
           
           return (
             <div 
@@ -57,7 +58,7 @@ export function VehicleStats({ onCategoryClick }: VehicleStatsProps) {
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
-                  <span className="text-xs text-gray-600 min-w-[40px] text-right">{displayPercentage}%</span>
+                  <span className="text-xs text-gray-600 min-w-[40px] text-right">{percentage}%</span>
                 </div>
               </div>
             </div>

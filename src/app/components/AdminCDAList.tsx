@@ -7,6 +7,8 @@ import {
 import { useNavigate } from "react-router";
 import logo from "../../../assets/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
 import { useCDAData } from "../../hooks/useCDAData";
+import { percentageLabel, percentageOf, percentageWidth } from "../data/metrics";
+import { toast } from "sonner";
 
 export function AdminCDAList() {
   const navigate = useNavigate();
@@ -26,14 +28,22 @@ export function AdminCDAList() {
   };
 
   const handleUpdateMeta = () => {
-    if (!selectedCda) return;
-    const parsedMeta = Number(newMeta);
-    if (Number.isNaN(parsedMeta) || parsedMeta <= 0) {
-      alert("Ingrese una meta mensual válida mayor a cero.");
+    if (!selectedCda) {
+      toast.error("Selecciona un CDA antes de actualizar su meta.");
       return;
     }
-    cdaHook.updateCdaMeta(selectedCda.id, parsedMeta);
-    alert(`Meta actualizada para ${selectedCda.nombre}: ${parsedMeta}`);
+    const parsedMeta = Number(newMeta);
+    if (Number.isNaN(parsedMeta) || parsedMeta <= 0) {
+      toast.error("Ingrese una meta mensual válida mayor a cero.");
+      return;
+    }
+    try {
+      cdaHook.updateCdaMeta(selectedCda.id, parsedMeta);
+      toast.success(`Meta actualizada para ${selectedCda.nombre}.`);
+    } catch (error) {
+      console.error("No se pudo actualizar la meta del CDA:", error);
+      toast.error("No se pudo guardar la meta. Revisa el almacenamiento del navegador.");
+    }
   };
 
   const handleLogout = () => {
@@ -59,8 +69,8 @@ export function AdminCDAList() {
   };
 
   const sortedCDAs = [...cdas].sort((a, b) => {
-    const pA = (a.clientesMes / a.metaMensual) * 100;
-    const pB = (b.clientesMes / b.metaMensual) * 100;
+    const pA = percentageOf(a.clientesMes, a.metaMensual);
+    const pB = percentageOf(b.clientesMes, b.metaMensual);
     return pB - pA;
   });
 
@@ -207,7 +217,7 @@ export function AdminCDAList() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {cdas.map((cda) => {
-                const p = Math.round((cda.clientesMes / cda.metaMensual) * 100);
+                const p = percentageOf(cda.clientesMes, cda.metaMensual);
                 return (
                   <Card
                     key={cda.id}
@@ -245,12 +255,12 @@ export function AdminCDAList() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-600">Cumplimiento de Meta</span>
-                        <span className="font-semibold text-gray-900">{p}%</span>
+                        <span className="font-semibold text-gray-900">{percentageLabel(p)}</span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className={`h-full ${getStatusColor(p)} transition-all`}
-                          style={{ width: `${Math.min(p, 100)}%` }}
+                          style={{ width: `${percentageWidth(p)}%` }}
                         />
                       </div>
                       <p className={`text-xs font-medium ${getStatusTextColor(p)}`}>
@@ -276,7 +286,7 @@ export function AdminCDAList() {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedCDAs.map((cda, index) => {
-                const p = Math.round((cda.clientesMes / cda.metaMensual) * 100);
+                const p = percentageOf(cda.clientesMes, cda.metaMensual);
                 const pos = index + 1;
                 return (
                   <Card
@@ -310,14 +320,14 @@ export function AdminCDAList() {
                       </div>
                       <div className="text-center">
                         <p className="text-xs text-gray-500">Cumplimiento</p>
-                        <p className={`text-sm font-bold ${getStatusTextColor(p)}`}>{p}%</p>
+                        <p className={`text-sm font-bold ${getStatusTextColor(p)}`}>{percentageLabel(p)}</p>
                       </div>
                     </div>
 
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className={`h-full ${getStatusColor(p)} transition-all`}
-                        style={{ width: `${Math.min(p, 100)}%` }}
+                        style={{ width: `${percentageWidth(p)}%` }}
                       />
                     </div>
                   </Card>

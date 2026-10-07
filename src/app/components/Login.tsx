@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Card } from "./ui/card";
-import { Building2, Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 import logo from "figma:asset/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
+import { mockCDAs } from "../data/mockCDAs";
+import { toast } from "sonner";
 
 export function Login() {
   const navigate = useNavigate();
@@ -17,23 +19,42 @@ export function Login() {
     setError("");
     setLoading(true);
 
-    // Simulamos un delay de autenticación
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const normalizedEmail = email.trim().toLowerCase();
+    try {
+      if (normalizedEmail === "admin@cda.com" && password === "admin123") {
+        localStorage.setItem("userRole", "admin");
+        localStorage.setItem("userName", "Administrador");
+        localStorage.removeItem("userId");
+        localStorage.removeItem("userCdaId");
+        navigate("/admin", { replace: true });
+        return;
+      }
 
-    // Credenciales mock - en producción esto se validaría con un backend
-    if (email === "admin@cda.com" && password === "admin123") {
-      // Login como administrador
-      localStorage.setItem("userRole", "admin");
-      localStorage.setItem("userName", "Administrador");
-      navigate("/admin");
-    } else if (email.includes("@") && password.length >= 6) {
-      // Login como vendedor (simulado)
-      localStorage.setItem("userRole", "vendedor");
-      localStorage.setItem("userName", email.split("@")[0]);
-      // Redirigir a un vendedor específico
-      navigate("/cda/1/vendedor/101");
-    } else {
-      setError("Credenciales inválidas. Intenta con admin@cda.com / admin123");
+      if (password.length >= 6) {
+        const cda = mockCDAs.find((item) =>
+          item.vendedores.some((vendor) => vendor.email.toLowerCase() === normalizedEmail),
+        ) ?? mockCDAs[0];
+        const vendor = cda?.vendedores.find((item) => item.email.toLowerCase() === normalizedEmail)
+          ?? cda?.vendedores[0];
+
+        if (!cda || !vendor) {
+          throw new Error("No hay vendedores disponibles para iniciar sesión.");
+        }
+
+        localStorage.setItem("userRole", "vendedor");
+        localStorage.setItem("userName", vendor.nombre);
+        localStorage.setItem("userId", String(vendor.id));
+        localStorage.setItem("userCdaId", String(cda.id));
+        navigate(`/cda/${cda.id}/vendedor/${vendor.id}`, { replace: true });
+        return;
+      }
+
+      setError("Contraseña inválida. Usa al menos 6 caracteres.");
+    } catch (loginError) {
+      console.error("No se pudo iniciar sesión:", loginError);
+      setError("No se pudo iniciar sesión en este navegador. Revisa el almacenamiento e inténtalo de nuevo.");
+      toast.error("No se pudo iniciar sesión");
+    } finally {
       setLoading(false);
     }
   };
@@ -130,7 +151,8 @@ export function Login() {
               </div>
               <div>
                 <p className="font-semibold text-gray-700">Vendedor:</p>
-                <p className="text-gray-600">cualquier email / mínimo 6 caracteres</p>
+                <p className="text-gray-600">correo de prueba recomendado / mínimo 6 caracteres</p>
+                <p className="text-gray-500">Otros correos válidos entran como el primer vendedor de prueba.</p>
               </div>
             </div>
           </div>

@@ -16,6 +16,10 @@ export function CheckInButton({ vendedorId, onCheckIn }: CheckInButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleGetLocation = () => {
+    if (!Number.isFinite(vendedorId) || vendedorId <= 0) {
+      toast.error("No se pudo identificar al vendedor. Vuelve a iniciar sesión.");
+      return;
+    }
     setIsCapturing(true);
 
     if (!navigator.geolocation) {
@@ -30,8 +34,6 @@ export function CheckInButton({ vendedorId, onCheckIn }: CheckInButtonProps) {
 
         // Simulamos la geocodificación inversa (en producción usar una API real)
         const direccion = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`;
-
-        toast.success("Ubicación capturada correctamente");
 
         onCheckIn(
           { lat: latitude, lng: longitude, direccion },
@@ -72,14 +74,49 @@ export function CheckInButton({ vendedorId, onCheckIn }: CheckInButtonProps) {
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCapturedPhoto(reader.result as string);
-        toast.success("Foto capturada");
-      };
-      reader.readAsDataURL(file);
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecciona un archivo de imagen válido.");
+      return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La foto debe pesar menos de 5 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => toast.error("No se pudo leer la foto seleccionada.");
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        toast.error("No se pudo procesar la foto seleccionada.");
+        return;
+      }
+
+      const image = new Image();
+      image.onerror = () => toast.error("El archivo seleccionado no es una imagen válida.");
+      image.onload = () => {
+        const scale = Math.min(1, 1280 / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext("2d");
+        if (!context) {
+          toast.error("El navegador no pudo procesar la foto.");
+          return;
+        }
+        try {
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          setCapturedPhoto(canvas.toDataURL("image/jpeg", 0.75));
+          toast.success("Foto adjunta a la visita.");
+        } catch (error) {
+          console.error("No se pudo comprimir la foto:", error);
+          toast.error("No se pudo procesar la foto. Intenta con otra imagen.");
+        }
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   return (

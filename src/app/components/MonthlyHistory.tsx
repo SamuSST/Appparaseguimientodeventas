@@ -7,6 +7,10 @@ export interface MonthlySnapshot {
   achieved: number;
   meta: number;
   progress: number;
+  isGlobal?: boolean;
+  facturacion?: { total: number };
+  rtms?: { total: number; motos: number };
+  preventivas?: { total: number };
 }
 
 interface MonthlyHistoryProps {

@@ -1,7 +1,6 @@
 import { Calendar, TrendingUp, Target, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { DashboardHeader } from "./DashboardHeader";
 import { MetricCard } from "./MetricCard";
 import { VehicleStats } from "./VehicleStats";
 import { ServiceTypeStats } from "./ServiceTypeStats";
@@ -23,6 +22,7 @@ import {
   getClientsByVehicleType,
   getClientsByServiceType
 } from "../data/mockClients";
+import { parseDateKey } from "../data/metrics";
 import { useCDAData } from "../../hooks/useCDAData";
 import { Card } from "./ui/card";
 import logo from "figma:asset/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
@@ -44,8 +44,14 @@ export function VendorDashboard() {
   );
   const dailyClients = getClientsByDate(latestClientDate);
   const displayDate = latestClientDate
-    ? new Date(`${latestClientDate}T00:00:00`).toLocaleDateString("es-CO", {
+    ? parseDateKey(latestClientDate).toLocaleDateString("es-CO", {
         day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "Sin datos";
+  const displayMonth = latestClientDate
+    ? parseDateKey(latestClientDate).toLocaleDateString("es-CO", {
         month: "long",
         year: "numeric",
       })
@@ -66,7 +72,7 @@ export function VendorDashboard() {
   }
 
   const handleDailyClick = () => {
-    setSheetTitle("Clientes de Hoy");
+    setSheetTitle("Clientes del último registro");
     setSheetClients(dailyClients);
     setSheetOpen(true);
   };
@@ -183,10 +189,15 @@ export function VendorDashboard() {
             </div>
           </Card>
 
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <strong>Vista de demostración:</strong> los gráficos de clientes usan datos de muestra
+            compartidos y no representan actividad individual de {vendedor.nombre}.
+          </div>
+
           {/* Métricas principales */}
           <div className="space-y-3">
             <MetricCard
-              title="Hoy"
+              title="Último registro"
               value={dailyClients.length}
               icon={Calendar}
               period={displayDate}
@@ -195,19 +206,19 @@ export function VendorDashboard() {
             />
 
             <MetricCard
-              title="Este Mes"
+              title="Mes con datos"
               percentage={vendedor.desempeñoMensual}
               icon={TrendingUp}
-              period="Marzo 2026"
+              period={displayMonth}
               color="bg-green-600"
             />
 
             <MetricCard
               title="Este Año"
-              percentage={68}
               icon={Target}
-              period="2026"
+              period={`Meta: ${vendedor.metaAnual} clientes`}
               color="bg-purple-600"
+              emptyMessage="Sin datos anuales por vendedor"
             />
           </div>
 
@@ -241,7 +252,11 @@ export function VendorDashboard() {
       ) : activeTab === "recorrido" ? (
         <DailyRoute />
       ) : (
-        <VendorsRanking />
+        <VendorsRanking
+          vendedores={cda.vendedores}
+          currentVendorId={vendedor.id}
+          period={displayMonth}
+        />
       )}
 
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
