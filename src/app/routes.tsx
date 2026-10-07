@@ -50,7 +50,7 @@ function RequireVendor() {
   const isVendor = role === "vendedor"
     && localStorage.getItem("userCdaId") === cdaId
     && localStorage.getItem("userId") === vendedorId;
-  const authorized = validVendor && (role === "admin" || isVendor);
+  const authorized = role === "admin" || (validVendor && isVendor);
 
   return authorized ? <Outlet /> : <Navigate to="/" replace />;
 }
@@ -76,11 +76,12 @@ export const router = createHashRouter([
     ],
   },
   {
+    path: "/cda/:cdaId/vendedor/:vendedorId",
     Component: RequireVendor,
     errorElement: <RouteError />,
     children: [
       {
-        path: "/cda/:cdaId/vendedor/:vendedorId",
+        index: true,
         Component: VendorDashboard,
       },
     ],
