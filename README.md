@@ -21,6 +21,11 @@ El sitio está configurado para el repositorio `Appparaseguimientodeventas` y us
 
 El workflow `.github/workflows/deploy-pages.yml` compila y publica automáticamente cada push a `main` en la rama `gh-pages`. También se puede iniciar manualmente desde la pestaña **Actions**.
 
+Antes de publicar, configura estos secretos en **Settings → Secrets and variables → Actions → New repository secret**, usando los valores de tu proyecto Supabase:
+
+- `VITE_SUPABASE_URL`: Project URL.
+- `VITE_SUPABASE_ANON_KEY`: publishable/anon key. No uses la clave `service_role`.
+
 En **Settings → Pages**, selecciona **Deploy from a branch**, rama `gh-pages` y carpeta `/(root)`. La primera ejecución debe terminar correctamente antes de que aparezca el último sitio.
 
 Para publicar manualmente desde un equipo con permisos de escritura al repositorio, ejecuta:
