@@ -2,15 +2,13 @@ import {
   createHashRouter,
   isRouteErrorResponse,
   Navigate,
-  Outlet,
-  useParams,
   useRouteError,
 } from "react-router";
-import { mockCDAs } from "./data/mockCDAs";
 import { Login } from "./components/Login";
 import { AdminCDAList } from "./components/AdminCDAList";
 import { CDAVendedoresList } from "./components/CDAVendedoresList";
 import { VendorDashboard } from "./components/VendorDashboard";
+import { RequireAdmin, RequireVendor } from "../lib/auth";
 
 function RouteError() {
   const error = useRouteError();
@@ -36,25 +34,6 @@ function RouteError() {
   );
 }
 
-function RequireAdmin() {
-  return localStorage.getItem("userRole") === "admin"
-    ? <Outlet />
-    : <Navigate to="/" replace />;
-}
-
-function RequireVendor() {
-  const { cdaId, vendedorId } = useParams();
-  const role = localStorage.getItem("userRole");
-  const validVendor = mockCDAs.some((cda) => cda.id === Number(cdaId)
-    && cda.vendedores.some((vendor) => vendor.id === Number(vendedorId)));
-  const isVendor = role === "vendedor"
-    && localStorage.getItem("userCdaId") === cdaId
-    && localStorage.getItem("userId") === vendedorId;
-  const authorized = role === "admin" || (validVendor && isVendor);
-
-  return authorized ? <Outlet /> : <Navigate to="/" replace />;
-}
-
 export const router = createHashRouter([
   {
     path: "/",
@@ -75,8 +54,22 @@ export const router = createHashRouter([
       },
     ],
   },
+  // Ruta antigua (datos de ejemplo): el administrador sigue entrando desde la lista.
+  // Se eliminará cuando los paneles lean de Supabase.
   {
     path: "/cda/:cdaId/vendedor/:vendedorId",
+    Component: RequireVendor,
+    errorElement: <RouteError />,
+    children: [
+      {
+        index: true,
+        Component: VendorDashboard,
+      },
+    ],
+  },
+  // Ruta nueva: cada vendedor entra a su panel con su UUID de Supabase.
+  {
+    path: "/vendedor/:vendedorId",
     Component: RequireVendor,
     errorElement: <RouteError />,
     children: [

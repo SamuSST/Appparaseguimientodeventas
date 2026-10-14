@@ -3,11 +3,12 @@ import { useNavigate } from "react-router";
 import { Card } from "./ui/card";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 import logo from "figma:asset/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
-import { mockCDAs } from "../data/mockCDAs";
 import { toast } from "sonner";
+import { useAuth, mensajeDeError } from "../../lib/auth";
 
 export function Login() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -19,41 +20,20 @@ export function Login() {
     setError("");
     setLoading(true);
 
-    const normalizedEmail = email.trim().toLowerCase();
     try {
-      if (normalizedEmail === "admin@cda.com" && password === "admin123") {
-        localStorage.setItem("userRole", "admin");
-        localStorage.setItem("userName", "Administrador");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("userCdaId");
-        navigate("/admin", { replace: true });
-        return;
-      }
+      // Supabase valida correo y contraseña, y auth.tsx carga el perfil
+      // (nombre y rol) desde la tabla "usuarios".
+      const perfil = await signIn(email.trim().toLowerCase(), password);
 
-      if (password.length >= 6) {
-        const cda = mockCDAs.find((item) =>
-          item.vendedores.some((vendor) => vendor.email.toLowerCase() === normalizedEmail),
-        ) ?? mockCDAs[0];
-        const vendor = cda?.vendedores.find((item) => item.email.toLowerCase() === normalizedEmail)
-          ?? cda?.vendedores[0];
-
-        if (!cda || !vendor) {
-          throw new Error("No hay vendedores disponibles para iniciar sesión.");
-        }
-
-        localStorage.setItem("userRole", "vendedor");
-        localStorage.setItem("userName", vendor.nombre);
-        localStorage.setItem("userId", String(vendor.id));
-        localStorage.setItem("userCdaId", String(cda.id));
-        navigate(`/cda/${cda.id}/vendedor/${vendor.id}`, { replace: true });
-        return;
-      }
-
-      setError("Contraseña inválida. Usa al menos 6 caracteres.");
+      navigate(
+        perfil.rol === "admin" ? "/admin" : `/vendedor/${perfil.id}`,
+        { replace: true },
+      );
     } catch (loginError) {
       console.error("No se pudo iniciar sesión:", loginError);
-      setError("No se pudo iniciar sesión en este navegador. Revisa el almacenamiento e inténtalo de nuevo.");
-      toast.error("No se pudo iniciar sesión");
+      const mensaje = mensajeDeError(loginError);
+      setError(mensaje);
+      toast.error(mensaje);
     } finally {
       setLoading(false);
     }
@@ -141,21 +121,6 @@ export function Login() {
               )}
             </button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-center text-sm text-gray-600 mb-3">Credenciales de prueba:</p>
-            <div className="space-y-2 text-xs bg-gray-50 p-3 rounded-lg">
-              <div>
-                <p className="font-semibold text-gray-700">Administrador:</p>
-                <p className="text-gray-600">admin@cda.com / admin123</p>
-              </div>
-              <div>
-                <p className="font-semibold text-gray-700">Vendedor:</p>
-                <p className="text-gray-600">correo de prueba recomendado / mínimo 6 caracteres</p>
-                <p className="text-gray-500">Otros correos válidos entran como el primer vendedor de prueba.</p>
-              </div>
-            </div>
-          </div>
         </Card>
 
         {/* Footer */}
