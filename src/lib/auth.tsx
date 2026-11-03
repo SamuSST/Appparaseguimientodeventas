@@ -203,6 +203,9 @@ export function mensajeDeError(err: unknown): string {
   if (msg.includes("debe_cambiar_password")) {
     return "Falta actualizar la base de datos. Pídele al administrador que aplique la migración de cuentas.";
   }
+  if (msg.toLowerCase().includes("banned")) {
+    return "Tu cuenta está desactivada. Habla con el administrador.";
+  }
   if (msg.includes("Invalid login credentials")) {
     return "Correo o contraseña incorrectos.";
   }

@@ -38,3 +38,31 @@ export async function crearCuenta(cuenta: { nombre: string; email: string; rol: 
   if (!data) throw new Error("El servidor no devolvió los datos de la cuenta.");
   return data;
 }
+
+export type AccionCuenta = "desactivar" | "activar" | "reiniciar_password" | "editar";
+
+export type ResultadoAccion = {
+  ok: true;
+  activo?: boolean;
+  password?: string;
+  email?: string;
+  emailEnviado?: boolean;
+  nombre?: string;
+};
+
+// Desactiva, reactiva, reinicia la contraseña o edita una cuenta (función gestionar-usuario-admin).
+export async function gestionarCuenta(accion: AccionCuenta, usuarioId: string, datos: { nombre?: string; email?: string } = {}) {
+  const { data, error } = await supabase.functions.invoke<ResultadoAccion>("gestionar-usuario-admin", {
+    body: { accion, usuarioId, ...datos },
+  });
+  if (error) {
+    const response = error.context;
+    if (response instanceof Response) {
+      const result = await response.json() as { error?: string };
+      throw new Error(result.error || error.message);
+    }
+    throw error;
+  }
+  if (!data) throw new Error("El servidor no respondió.");
+  return data;
+}

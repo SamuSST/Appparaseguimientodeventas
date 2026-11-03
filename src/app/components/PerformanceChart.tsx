@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { allClients, type Client } from "../data/mockClients";
+import type { Client } from "../data/clientes";
 import { parseDateKey, toDateKey } from "../data/metrics";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
@@ -77,7 +77,7 @@ function calcularDatos(clients: Client[]) {
 }
 
 // compararAnios: en el panel del vendedor solo se compara por semana y por mes.
-export function PerformanceChart({ clients = allClients, compararAnios = true }: { clients?: Client[]; compararAnios?: boolean } = {}) {
+export function PerformanceChart({ clients, compararAnios = true }: { clients: Client[]; compararAnios?: boolean }) {
   const { latestYear, previousYear, weekData, monthData, yearData, comparisonAvailableByView } = useMemo(
     () => calcularDatos(clients),
     [clients],

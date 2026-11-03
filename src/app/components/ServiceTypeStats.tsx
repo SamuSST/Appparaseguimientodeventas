@@ -1,5 +1,5 @@
 import { Users, User } from "lucide-react";
-import { allClients, type Client } from "../data/mockClients";
+import type { Client } from "../data/clientes";
 import { roundedShares } from "../data/metrics";
 
 interface ServiceType {
@@ -12,7 +12,7 @@ interface ServiceType {
 }
 
 interface ServiceTypeStatsProps {
-  clients?: Client[];
+  clients: Client[];
   onCategoryClick: (category: "publico" | "particular") => void;
 }
 
@@ -21,7 +21,7 @@ const serviceTypes: ServiceType[] = [
   { type: "Particulares", count: 0, icon: User, color: "text-blue-600", bgColor: "bg-blue-100", key: "particular" },
 ];
 
-export function ServiceTypeStats({ onCategoryClick, clients = allClients }: ServiceTypeStatsProps) {
+export function ServiceTypeStats({ onCategoryClick, clients }: ServiceTypeStatsProps) {
   const serviceData = serviceTypes.map((service) => ({
     ...service,
     count: clients.filter((client) => client.tipoServicio === service.key).length,

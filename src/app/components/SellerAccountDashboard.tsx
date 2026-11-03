@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Eye, LogOut, RefreshCw } from "lucide-react";
+import { ArrowLeft, Eye, LogOut, Plus, RefreshCw } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { atencionesAClientes, periodoMensual, useSellerData } from "../../hooks/useSellerData";
-import type { Client } from "../data/mockClients";
+import type { Client } from "../data/clientes";
 import { toDateKey } from "../data/metrics";
-import { BottomNav } from "./BottomNav";
+import { BottomNav, type SellerTab } from "./BottomNav";
+import { MonthlyHistory, type MonthlySnapshot } from "./MonthlyHistory";
+import { SellerFollowUp } from "./seller/SellerFollowUp";
+import { RegisterAttentionDialog } from "./seller/RegisterAttentionDialog";
+import { nombreDeMes, percentageOf, periodosAlrededor } from "../data/metrics";
 import { SellerSummary } from "./seller/SellerSummary";
 import { PerformanceChart } from "./PerformanceChart";
 import { DailyTrendChart } from "./DailyTrendChart";
@@ -24,10 +28,11 @@ import { SellerRoute } from "./seller/SellerRoute";
 import { SellerRanking } from "./seller/SellerRanking";
 import logo from "figma:asset/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
 
-type Tab = "dashboard" | "ranking" | "recorrido";
+type Tab = SellerTab;
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "seguimiento", label: "Seguimiento" },
   { id: "recorrido", label: "Recorrido" },
   { id: "ranking", label: "Ranking" },
 ];
@@ -74,6 +79,31 @@ export function SellerAccountDashboard() {
   const clientes = useMemo(() => todosLosClientes.filter((c) => c.fecha.startsWith(anioActual)), [todosLosClientes, anioActual]);
   const atencionesAnio = useMemo(() => atenciones.filter((a) => a.fecha.startsWith(anioActual)), [atenciones, anioActual]);
   const [sheet, setSheet] = useState<{ titulo: string; clientes: Client[] } | null>(null);
+  const [registrando, setRegistrando] = useState(false);
+
+  // Historial de los últimos 12 meses (sin valores en pesos).
+  const historial = useMemo<MonthlySnapshot[]>(
+    () =>
+      periodosAlrededor(11, 0)
+        .map((p) => {
+          const delMes = atenciones.filter((a) => a.fecha.startsWith(p) && a.tipo_revision !== "Reinspección");
+          const pagadas = delMes.filter((a) => a.pagado).length;
+          const meta = metas.porMes[p] ?? 0;
+          const rtm = delMes.filter((a) => a.tipo_revision === "RTM");
+          return {
+            mes: nombreDeMes(p),
+            fileName: p,
+            timestamp: `${p}-01T12:00:00`,
+            achieved: pagadas,
+            meta,
+            progress: meta ? Math.round(percentageOf(pagadas, meta)) : 0,
+            rtms: { total: rtm.length, motos: rtm.filter((a) => a.tipo_vehiculo === "moto").length },
+            preventivas: { total: delMes.filter((a) => a.tipo_revision === "Preventiva").length },
+          };
+        })
+        .filter((s) => s.achieved > 0 || s.meta > 0 || s.rtms.total > 0),
+    [atenciones, metas.porMes],
+  );
 
   const abrirVehiculos = (tipo: "carro" | "moto" | "pesado") => {
     const titulos = { carro: "Carros", moto: "Motos", pesado: "Vehículos pesados" };
@@ -219,6 +249,15 @@ export function SellerAccountDashboard() {
                   Aún no tienes atenciones registradas este año. Tus números aparecerán aquí a medida que se carguen tus ventas.
                 </div>
               )}
+              {!esAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setRegistrando(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-md hover:bg-blue-700 sm:w-auto"
+                >
+                  <Plus className="h-5 w-5" /> Registrar atención
+                </button>
+              )}
               <SellerSummary atenciones={atencionesAnio} metas={metas} hoy={hoy} mes={mes} />
               {/* Gráficos originales del diseño de Figma, ahora con los datos de Supabase. */}
               <PerformanceChart clients={todosLosClientes} compararAnios={false} />
@@ -234,10 +273,15 @@ export function SellerAccountDashboard() {
                 <TopBrandsChart clients={clientes} />
               </div>
               <ClientList clients={clientes} />
-              <SellerClients key={vendedorId} atenciones={atencionesAnio} />
+              <SellerClients key={vendedorId} atenciones={atencionesAnio} puedeBorrar={!esAdmin} onCambio={() => void recargar()} />
+              <div className="-mx-4 md:-mx-6 lg:-mx-8">
+                <MonthlyHistory snapshots={historial} />
+              </div>
             </>
           )}
         </main>
+      ) : activeTab === "seguimiento" ? (
+        <SellerFollowUp key={vendedorId} vendedorId={vendedorId} />
       ) : activeTab === "recorrido" ? (
         <SellerRoute key={vendedorId} vendedorId={vendedorId} soloLectura={esAdmin} />
       ) : (
@@ -245,6 +289,15 @@ export function SellerAccountDashboard() {
       )}
 
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {!esAdmin && (
+        <RegisterAttentionDialog
+          vendedorId={vendedorId}
+          open={registrando}
+          onOpenChange={setRegistrando}
+          onSaved={() => void recargar()}
+        />
+      )}
 
       <ClientDetailsSheet
         open={!!sheet}

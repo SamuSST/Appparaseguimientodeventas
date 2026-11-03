@@ -36,7 +36,12 @@ Antes de usar esta función, desde la raíz del proyecto:
 
 1. Inicia sesión en Supabase CLI y vincula el proyecto (`supabase login` y `supabase link --project-ref <project-ref>`).
 2. Aplica la migración que agrega el indicador de cambio obligatorio: `supabase db push`.
-3. Publica ambas funciones: `supabase functions deploy crear-usuario-admin` y `supabase functions deploy cambiar-password-temporal`.
+3. Publica las funciones (todas sin "Verify JWT"; cada una verifica la sesión por dentro):
+   `supabase functions deploy crear-usuario-admin cambiar-password-temporal gestionar-usuario-admin recuperar-password --no-verify-jwt`.
+   - `crear-usuario-admin`: crea cuentas y envía el correo de bienvenida.
+   - `cambiar-password-temporal`: cambio obligatorio de la contraseña temporal al ingresar.
+   - `gestionar-usuario-admin`: desactivar/reactivar, contraseña nueva y editar nombre o correo.
+   - `recuperar-password`: "¿Olvidaste tu contraseña?" del login (una solicitud cada 10 minutos por cuenta).
 
 ### Correo de bienvenida
 

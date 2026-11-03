@@ -1,12 +1,17 @@
 import { useState } from "react";
-import { Search, Users } from "lucide-react";
+import { Search, Trash2, Users } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "../../../lib/supabase";
 import { Card } from "../ui/card";
 import { parseDateKey } from "../../data/metrics";
-import type { Atencion } from "../../../hooks/useSellerData";
+import { estadoReinspeccion, type Atencion } from "../../../hooks/useSellerData";
+import { toDateKey } from "../../data/metrics";
 
 const PAGINA = 20;
 
-export function SellerClients({ atenciones }: { atenciones: Atencion[] }) {
+// puedeBorrar: el vendedor puede borrar las atenciones que registró él mismo hoy (no las del Excel).
+export function SellerClients({ atenciones, puedeBorrar = false, onCambio }: { atenciones: Atencion[]; puedeBorrar?: boolean; onCambio?: () => void }) {
+  const hoy = toDateKey(new Date());
   const [busqueda, setBusqueda] = useState("");
   const [visibles, setVisibles] = useState(PAGINA);
 
@@ -60,9 +65,35 @@ export function SellerClients({ atenciones }: { atenciones: Atencion[] }) {
                     {a.resultado && (
                       <span className={a.resultado === "Rechazada" ? "font-medium text-red-600" : "text-green-700"}> · {a.resultado}</span>
                     )}
+                    {(() => {
+                      const estado = estadoReinspeccion(a, atenciones, hoy);
+                      return estado ? <span className="text-gray-500"> (reinspección: {estado.toLowerCase()})</span> : null;
+                    })()}
                   </p>
                 </div>
-                <div className="shrink-0 text-right">
+                <div className="flex shrink-0 items-center gap-2 text-right">
+                  {puedeBorrar && a.carga_id === null && a.fecha === hoy && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm(`¿Borrar la atención de la placa ${a.placa}?`)) return;
+                        const { error } = await supabase.from("atenciones").delete().eq("id", a.id);
+                        if (error) {
+                          console.error("No se pudo borrar la atención:", error);
+                          toast.error("No se pudo borrar la atención.");
+                          return;
+                        }
+                        toast.success("Atención borrada.");
+                        onCambio?.();
+                      }}
+                      className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      aria-label={`Borrar atención de ${a.placa}`}
+                      title="Borrar (solo lo registrado hoy)"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                  <div>
                   <p className="text-xs text-gray-500">
                     {parseDateKey(a.fecha).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
                     {a.hora ? ` · ${a.hora.slice(0, 5)}` : ""}
@@ -78,6 +109,7 @@ export function SellerClients({ atenciones }: { atenciones: Atencion[] }) {
                   >
                     {a.tipo_revision === "Reinspección" ? "Gratis" : a.pagado ? "Pagado" : "Pendiente"}
                   </span>
+                  </div>
                 </div>
               </li>
             ))}

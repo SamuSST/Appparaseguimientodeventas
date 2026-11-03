@@ -1,18 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function jsonResponse(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
+import { corsHeaders, enviarCredenciales, jsonResponse } from "../_shared/correo.ts";
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -120,7 +107,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "No se pudo guardar el perfil. No se creó la cuenta." }, 500);
   }
 
-  const emailEnviado = await enviarCorreoBienvenida({ nombre, email, rol, password });
+  const emailEnviado = await enviarCredenciales({ nombre, email, rol, password }, "bienvenida");
 
   return jsonResponse({
     id: created.user.id,
@@ -130,87 +117,3 @@ Deno.serve(async (request) => {
     emailEnviado,
   });
 });
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-// Envía las credenciales desde una cuenta de Gmail (SMTP con contraseña de aplicación).
-// Si el envío falla, la cuenta ya existe y el administrador sigue viendo la contraseña
-// temporal en pantalla para entregarla.
-async function enviarCorreoBienvenida(cuenta: { nombre: string; email: string; rol: string; password: string }) {
-  const gmailUser = Deno.env.get("GMAIL_USER");
-  const gmailAppPassword = Deno.env.get("GMAIL_APP_PASSWORD")?.replaceAll(" ", "");
-  const appUrl = Deno.env.get("APP_URL") ?? "https://samusst.github.io/Appparaseguimientodeventas/";
-  if (!gmailUser || !gmailAppPassword) {
-    console.error("Falta configurar GMAIL_USER o GMAIL_APP_PASSWORD; no se envió el correo de bienvenida.");
-    return false;
-  }
-
-  const nombre = escapeHtml(cuenta.nombre);
-  const email = escapeHtml(cuenta.email);
-  const password = escapeHtml(cuenta.password);
-  const url = escapeHtml(appUrl);
-  const tipoCuenta = cuenta.rol === "admin" ? "administrador" : "vendedor";
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #111827;">
-      <h2 style="color: #1d4ed8;">Bienvenido(a) al Sistema de Gestión CDA 37</h2>
-      <p>Hola ${nombre},</p>
-      <p>Se creó tu cuenta de <strong>${tipoCuenta}</strong>. Estos son tus datos de acceso:</p>
-      <table style="border-collapse: collapse; margin: 16px 0;">
-        <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Correo</td><td><strong>${email}</strong></td></tr>
-        <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Contraseña temporal</td><td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 15px;">${password}</code></td></tr>
-      </table>
-      <p>
-        <a href="${url}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: bold;">Iniciar sesión</a>
-      </p>
-      <p style="font-size: 13px; color: #6b7280;">Al ingresar por primera vez deberás crear una contraseña propia. Si no esperabas este correo, ignóralo.</p>
-    </div>`;
-
-  const text = [
-    `Hola ${cuenta.nombre},`,
-    "",
-    `Se creó tu cuenta de ${tipoCuenta} en el Sistema de Gestión CDA 37.`,
-    `Correo: ${cuenta.email}`,
-    `Contraseña temporal: ${cuenta.password}`,
-    `Ingresa en: ${appUrl}`,
-    "",
-    "Al ingresar por primera vez deberás crear una contraseña propia.",
-  ].join("\n");
-
-  // Supabase bloquea los puertos 25 y 587, por eso se usa 465 con TLS directo.
-  const client = new SMTPClient({
-    connection: {
-      hostname: "smtp.gmail.com",
-      port: 465,
-      tls: true,
-      auth: { username: gmailUser, password: gmailAppPassword },
-    },
-  });
-
-  try {
-    await client.send({
-      from: `CDA 37 <${gmailUser}>`,
-      to: cuenta.email,
-      subject: "Tu cuenta en el Sistema de Gestión CDA 37",
-      content: text,
-      html,
-    });
-    return true;
-  } catch (error) {
-    console.error("No se pudo enviar el correo de bienvenida:", error);
-    return false;
-  } finally {
-    try {
-      await client.close();
-    } catch {
-      // La conexión ya estaba cerrada.
-    }
-  }
-}

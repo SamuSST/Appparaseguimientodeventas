@@ -3,6 +3,7 @@ import { RefreshCw, Target } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { periodoMensual } from "../../hooks/useSellerData";
+import { nombreDeMes, periodosAlrededor } from "../data/metrics";
 import { Card } from "./ui/card";
 
 type FilaMeta = {
@@ -17,9 +18,9 @@ export function SellerGoalsPanel() {
   const [filas, setFilas] = useState<FilaMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState<string | null>(null);
-  const now = new Date();
-  const mes = periodoMensual(now);
-  const anio = String(now.getFullYear());
+  // Se pueden dejar listas las metas de meses siguientes o revisar las de meses anteriores.
+  const [mes, setMes] = useState(() => periodoMensual(new Date()));
+  const anio = mes.slice(0, 4);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -99,7 +100,7 @@ export function SellerGoalsPanel() {
     }
   };
 
-  const nombreMes = now.toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+  const nombreMes = nombreDeMes(mes);
   const inputClass =
     "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200";
 
@@ -127,6 +128,21 @@ export function SellerGoalsPanel() {
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
+
+      <label className="flex flex-col gap-1 text-xs text-gray-600 sm:max-w-xs">
+        Mes de las metas
+        <select
+          value={mes}
+          onChange={(e) => setMes(e.target.value)}
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+        >
+          {periodosAlrededor(12, 12).map((p) => (
+            <option key={p} value={p}>
+              {nombreDeMes(p)}
+            </option>
+          ))}
+        </select>
+      </label>
 
       {loading ? (
         <p className="py-4 text-center text-sm text-gray-500">Cargando vendedores...</p>

@@ -6,8 +6,6 @@ import {
 } from "react-router";
 import { Login } from "./components/Login";
 import { AdminCDAList } from "./components/AdminCDAList";
-import { CDAVendedoresList } from "./components/CDAVendedoresList";
-import { VendorDashboard } from "./components/VendorDashboard";
 import { SellerAccountDashboard } from "./components/SellerAccountDashboard";
 import { RequireAdmin, RequirePasswordUpdate, RequireVendor } from "../lib/auth";
 import { ChangeTemporaryPassword } from "./components/ChangeTemporaryPassword";
@@ -60,26 +58,9 @@ export const router = createHashRouter([
         path: "/admin",
         Component: AdminCDAList,
       },
-      {
-        path: "/cda/:cdaId",
-        Component: CDAVendedoresList,
-      },
     ],
   },
-  // Ruta antigua (datos de ejemplo): el administrador sigue entrando desde la lista.
-  // Se eliminará cuando los paneles lean de Supabase.
-  {
-    path: "/cda/:cdaId/vendedor/:vendedorId",
-    Component: RequireVendor,
-    errorElement: <RouteError />,
-    children: [
-      {
-        index: true,
-        Component: VendorDashboard,
-      },
-    ],
-  },
-  // Ruta nueva: cada vendedor entra a su panel con su UUID de Supabase.
+  // Cada vendedor entra a su panel con su UUID de Supabase; el admin puede abrir el de cualquiera.
   {
     path: "/vendedor/:vendedorId",
     Component: RequireVendor,

@@ -25,6 +25,7 @@ export function SellerRoute({ vendedorId, soloLectura = false }: { vendedorId: s
   const [guardando, setGuardando] = useState(false);
   const [seleccionada, setSeleccionada] = useState<Visita | null>(null);
   const hoy = toDateKey(new Date());
+  const [dia, setDia] = useState(hoy);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -33,7 +34,7 @@ export function SellerRoute({ vendedorId, soloLectura = false }: { vendedorId: s
         .from("visitas")
         .select("id, hora, lat, lng, direccion, foto_url, notas")
         .eq("vendedor_id", vendedorId)
-        .eq("fecha", hoy)
+        .eq("fecha", dia)
         .order("hora");
       if (error) throw error;
 
@@ -51,7 +52,7 @@ export function SellerRoute({ vendedorId, soloLectura = false }: { vendedorId: s
     } finally {
       setLoading(false);
     }
-  }, [vendedorId, hoy]);
+  }, [vendedorId, dia]);
 
   useEffect(() => {
     void cargar();
@@ -99,15 +100,25 @@ export function SellerRoute({ vendedorId, soloLectura = false }: { vendedorId: s
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
-      {!soloLectura && (
+      {!soloLectura && dia === hoy && (
         <div className={guardando ? "pointer-events-none opacity-60" : undefined}>
           <CheckInButton vendedorId={vendedorId} onCheckIn={handleCheckIn} />
         </div>
       )}
 
       <Card className="p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Recorrido de hoy</h3>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-gray-900">Recorrido del</h3>
+            <input
+              type="date"
+              value={dia}
+              max={hoy}
+              onChange={(e) => setDia(e.target.value || hoy)}
+              aria-label="Día del recorrido"
+              className="rounded-lg border border-gray-300 px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            />
+          </div>
           <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
             {visitas.length} {visitas.length === 1 ? "visita" : "visitas"}
           </span>
@@ -116,7 +127,9 @@ export function SellerRoute({ vendedorId, soloLectura = false }: { vendedorId: s
         {loading ? (
           <p className="py-6 text-center text-sm text-gray-500">Cargando visitas...</p>
         ) : visitas.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-500">Aún no has registrado visitas hoy.</p>
+          <p className="py-6 text-center text-sm text-gray-500">
+            {dia === hoy ? "Aún no hay visitas registradas hoy." : "No hay visitas registradas ese día."}
+          </p>
         ) : (
           <ol className="relative space-y-4 border-l-2 border-green-200 pl-6">
             {visitas.map((v) => (

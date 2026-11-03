@@ -1,24 +1,40 @@
 import { useState } from "react";
-import { Building2, ChevronRight, DollarSign, LogOut, RefreshCw, TrendingUp, Trophy, Users } from "lucide-react";
+import { Building2, ChevronRight, DollarSign, Download, LogOut, RefreshCw, TrendingUp, Trophy, Users } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { useAuth } from "../../lib/auth";
 import { periodoMensual } from "../../hooks/useSellerData";
 import { useAdminResumen } from "../../hooks/useAdminResumen";
-import { percentageLabel, percentageOf, percentageWidth } from "../data/metrics";
+import { mismoMesAnioAnterior, nombreDeMes, percentageLabel, percentageOf, percentageWidth, periodosAlrededor } from "../data/metrics";
 import { Card } from "./ui/card";
 import { CreateAccountPanel } from "./CreateAccountPanel";
 import { SellerGoalsPanel } from "./SellerGoalsPanel";
 import { AdminRoutesPanel } from "./AdminRoutesPanel";
 import { ImportExcelPanel } from "./ImportExcelPanel";
+import { AccountsPanel } from "./AccountsPanel";
+import { AdminFollowUpPanel } from "./AdminFollowUpPanel";
 import logo from "figma:asset/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
 
-type AdminTab = "inicio" | "recorridos";
+type AdminTab = "inicio" | "seguimiento" | "recorridos";
 
 const adminTabs: { id: AdminTab; label: string }[] = [
   { id: "inicio", label: "Inicio" },
+  { id: "seguimiento", label: "Seguimiento" },
   { id: "recorridos", label: "Recorridos" },
 ];
+
+// Variación contra el mismo mes del año anterior, p. ej. "+12% vs noviembre de 2025".
+function Variacion({ actual, anterior, periodoAnterior }: { actual: number; anterior: number; periodoAnterior: string }) {
+  if (!anterior) return <p className="mt-1 text-xs text-gray-400">Sin datos de {nombreDeMes(periodoAnterior)}</p>;
+  const cambio = Math.round(((actual - anterior) / anterior) * 100);
+  return (
+    <p className={`mt-1 text-xs font-medium ${cambio >= 0 ? "text-green-600" : "text-red-600"}`}>
+      {cambio >= 0 ? "+" : ""}
+      {cambio}% vs {nombreDeMes(periodoAnterior)}
+    </p>
+  );
+}
 
 const pesos = (valor: number) => `$${Math.round(valor).toLocaleString("es-CO")}`;
 
@@ -29,26 +45,31 @@ export function AdminCDAList() {
   const [tab, setTab] = useState<AdminTab>("inicio");
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const now = new Date();
-  const periodo = periodoMensual(now);
-  const nombreMes = now.toLocaleDateString("es-CO", { month: "long", year: "numeric" });
-  const { vendedores, metaCda, loading, error, recargar, guardarMetaCda } = useAdminResumen(periodo);
+  const [periodo, setPeriodo] = useState(() => periodoMensual(new Date()));
+  const periodoAnterior = mismoMesAnioAnterior(periodo);
+  const anio = periodo.slice(0, 4);
+  const nombreMes = nombreDeMes(periodo);
+  const { vendedores, metaCda, metaAnualCda, ventasAnio, loading, error, recargar, guardarMetaCda } = useAdminResumen(periodo);
+  const anterior = useAdminResumen(periodoAnterior);
   const [showMetaPanel, setShowMetaPanel] = useState(false);
   const [newMeta, setNewMeta] = useState("");
+  const [newMetaAnual, setNewMetaAnual] = useState("");
   const [guardandoMeta, setGuardandoMeta] = useState(false);
   // Cambia cuando se importa un Excel o se crean cuentas, para que los paneles vuelvan a leer Supabase.
   const [version, setVersion] = useState(0);
 
   const handleUpdateMeta = async () => {
-    const value = Number(newMeta);
-    if (!Number.isInteger(value) || value <= 0) {
-      toast.error("Ingresa una meta mensual mayor a cero.");
+    const mensual = Number(newMeta);
+    const anual = newMetaAnual.trim() ? Number(newMetaAnual) : null;
+    if (!Number.isInteger(mensual) || mensual <= 0 || (anual !== null && (!Number.isInteger(anual) || anual <= 0))) {
+      toast.error("Las metas deben ser números enteros mayores a cero.");
       return;
     }
     setGuardandoMeta(true);
     try {
-      await guardarMetaCda(value);
-      toast.success("Meta mensual del CDA guardada.");
+      await guardarMetaCda(mensual, "mensual");
+      if (anual !== null) await guardarMetaCda(anual, "anual");
+      toast.success("Metas del CDA guardadas.");
       setShowMetaPanel(false);
     } catch (err) {
       console.error("No se pudo actualizar la meta mensual:", err);
@@ -70,7 +91,27 @@ export function AdminCDAList() {
 
   const actualizarTodo = () => {
     void recargar();
+    void anterior.recargar();
     setVersion((v) => v + 1);
+  };
+
+  const exportarVendedores = () => {
+    const filas = vendedores.map((v) => ({
+      Vendedor: v.nombre,
+      Estado: v.activo ? "Activo" : "Inactivo",
+      Atenciones: v.atenciones,
+      RTM: v.rtm,
+      Preventivas: v.preventivas,
+      "RTM rechazadas": v.rechazadas,
+      Reinspecciones: v.reinspecciones,
+      "Ventas pagadas": v.ventas_pagadas,
+      Meta: v.meta ?? "",
+      "Cumplimiento %": v.meta ? Math.round(percentageOf(v.ventas_pagadas, v.meta)) : "",
+      Ingresos: Math.round(v.ingresos),
+    }));
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filas), "Vendedores");
+    XLSX.writeFile(libro, `desempeno_vendedores_${periodo}.xlsx`);
   };
 
   const activos = vendedores.filter((v) => v.activo);
@@ -80,6 +121,9 @@ export function AdminCDAList() {
   const rtmMes = vendedores.reduce((s, v) => s + v.rtm, 0);
   const rechazadasMes = vendedores.reduce((s, v) => s + v.rechazadas, 0);
   const percentage = metaCda ? percentageOf(ventasMes, metaCda) : 0;
+  const porcentajeAnual = metaAnualCda ? percentageOf(ventasAnio, metaAnualCda) : 0;
+  const sumaAnterior = (campo: "atenciones" | "ventas_pagadas" | "ingresos") =>
+    anterior.vendedores.reduce((s, v) => s + v[campo], 0);
   const statusText = percentage >= 75 ? "Buen avance" : percentage >= 50 ? "Avance intermedio" : "Requiere atención";
 
   return (
@@ -92,6 +136,7 @@ export function AdminCDAList() {
               type="button"
               onClick={() => {
                 setNewMeta(metaCda ? String(metaCda) : "");
+                setNewMetaAnual(metaAnualCda ? String(metaAnualCda) : "");
                 setShowMetaPanel((visible) => !visible);
                 setTab("inicio");
               }}
@@ -143,30 +188,44 @@ export function AdminCDAList() {
 
         {tab === "recorridos" ? (
           <AdminRoutesPanel key={version} />
+        ) : tab === "seguimiento" ? (
+          <AdminFollowUpPanel key={version} />
         ) : (
           <>
             {showMetaPanel && (
               <Card className="space-y-3 border-blue-200 p-5">
-                <h2 className="font-bold text-gray-900">Meta mensual del CDA · {nombreMes}</h2>
-                <label htmlFor="monthly-goal" className="block text-sm text-gray-700">
-                  Ventas pagadas que debe lograr el CDA este mes (sin contar reinspecciones)
-                </label>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <input
-                    id="monthly-goal"
-                    type="number"
-                    min="1"
-                    value={newMeta}
-                    onChange={(event) => setNewMeta(event.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 sm:max-w-xs"
-                  />
+                <h2 className="font-bold text-gray-900">Metas del CDA</h2>
+                <p className="text-sm text-gray-600">Ventas pagadas que debe lograr el CDA (sin contar reinspecciones).</p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <label htmlFor="monthly-goal" className="block text-sm capitalize text-gray-700">
+                    {nombreMes}
+                    <input
+                      id="monthly-goal"
+                      type="number"
+                      min="1"
+                      value={newMeta}
+                      onChange={(event) => setNewMeta(event.target.value)}
+                      className="mt-1 w-full rounded-lg border px-3 py-2 sm:max-w-xs"
+                    />
+                  </label>
+                  <label htmlFor="yearly-goal" className="block text-sm text-gray-700">
+                    Año {anio} (opcional)
+                    <input
+                      id="yearly-goal"
+                      type="number"
+                      min="1"
+                      value={newMetaAnual}
+                      onChange={(event) => setNewMetaAnual(event.target.value)}
+                      className="mt-1 w-full rounded-lg border px-3 py-2 sm:max-w-xs"
+                    />
+                  </label>
                   <button
                     type="button"
                     onClick={() => void handleUpdateMeta()}
                     disabled={guardandoMeta}
                     className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                   >
-                    {guardandoMeta ? "Guardando..." : "Guardar meta"}
+                    {guardandoMeta ? "Guardando..." : "Guardar metas"}
                   </button>
                 </div>
               </Card>
@@ -181,6 +240,24 @@ export function AdminCDAList() {
               </div>
             )}
 
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                Mes
+                <select
+                  value={periodo}
+                  onChange={(e) => setPeriodo(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                >
+                  {periodosAlrededor(23, 0).map((p) => (
+                    <option key={p} value={p}>
+                      {nombreDeMes(p)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-xs text-gray-500">Comparado con el mismo mes del año anterior</p>
+            </div>
+
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Card className="p-5">
                 <Users className="mb-3 h-6 w-6 text-green-600" />
@@ -191,11 +268,13 @@ export function AdminCDAList() {
                 <TrendingUp className="mb-3 h-6 w-6 text-purple-600" />
                 <p className="text-sm text-gray-500">Atenciones de {nombreMes}</p>
                 <p className="text-2xl font-bold text-gray-900">{loading ? "…" : atencionesMes.toLocaleString("es-CO")}</p>
+                {!loading && !anterior.loading && <Variacion actual={atencionesMes} anterior={sumaAnterior("atenciones")} periodoAnterior={periodoAnterior} />}
               </Card>
               <Card className="p-5">
                 <DollarSign className="mb-3 h-6 w-6 text-emerald-600" />
                 <p className="text-sm text-gray-500">Ingresos pagados del mes</p>
                 <p className="text-2xl font-bold text-gray-900">{loading ? "…" : pesos(ingresosMes)}</p>
+                {!loading && !anterior.loading && <Variacion actual={ingresosMes} anterior={sumaAnterior("ingresos")} periodoAnterior={periodoAnterior} />}
               </Card>
               <Card className="p-5">
                 <Building2 className="mb-3 h-6 w-6 text-red-600" />
@@ -228,6 +307,20 @@ export function AdminCDAList() {
                 </span>
                 {metaCda && <span className="font-semibold text-gray-700">{statusText}</span>}
               </div>
+              <div className="border-t pt-3 text-sm">
+                <div className="mb-1 flex flex-wrap justify-between gap-2 text-gray-600">
+                  <span>Año {anio}</span>
+                  <span className="font-semibold text-gray-800">
+                    {ventasAnio.toLocaleString("es-CO")}
+                    {metaAnualCda ? ` de ${metaAnualCda.toLocaleString("es-CO")} · ${percentageLabel(porcentajeAnual)}` : " ventas pagadas · sin meta anual"}
+                  </span>
+                </div>
+                {metaAnualCda && (
+                  <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                    <div className={`h-full rounded-full ${colorAvance(porcentajeAnual)}`} style={{ width: `${percentageWidth(porcentajeAnual)}%` }} />
+                  </div>
+                )}
+              </div>
             </Card>
 
             <Card className="p-5">
@@ -236,15 +329,25 @@ export function AdminCDAList() {
                   <h2 className="text-lg font-bold text-gray-900">Vendedores</h2>
                   <p className="text-sm text-gray-500">Desempeño de {nombreMes} · toca un vendedor para ver su panel</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={actualizarTodo}
-                  className="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-50"
-                  title="Actualizar"
-                  aria-label="Actualizar datos"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={exportarVendedores}
+                    disabled={loading || vendedores.length === 0}
+                    className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Download className="h-4 w-4" /> Excel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={actualizarTodo}
+                    className="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-50"
+                    title="Actualizar"
+                    aria-label="Actualizar datos"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               {loading ? (
                 <p className="py-6 text-center text-sm text-gray-500">Cargando vendedores...</p>
@@ -321,6 +424,8 @@ export function AdminCDAList() {
             <SellerGoalsPanel key={`metas-${version}`} />
 
             <CreateAccountPanel />
+
+            <AccountsPanel key={`cuentas-${version}`} onChange={actualizarTodo} />
           </>
         )}
       </main>

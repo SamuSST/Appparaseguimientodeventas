@@ -15,8 +15,8 @@ export interface MonthlySnapshot {
 
 interface MonthlyHistoryProps {
   snapshots: MonthlySnapshot[];
-  showVendedores: boolean;
-  onToggleVendedores: () => void;
+  showVendedores?: boolean;
+  onToggleVendedores?: () => void;
 }
 
 const formatCurrency = (value: number) =>
@@ -34,12 +34,12 @@ export function MonthlyHistory({ snapshots, showVendedores, onToggleVendedores }
           <h2 className="font-semibold text-gray-900 text-lg">Historial mensual</h2>
           <p className="text-sm text-gray-600">Revisa el desempeño histórico mensual.</p>
         </div>
-        <button
+        {onToggleVendedores && <button
           onClick={onToggleVendedores}
           className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
         >
           {showVendedores ? "Ocultar vendedores" : "Ver vendedores"}
-        </button>
+        </button>}
       </div>
 
       {snapshots.length === 0 ? (
@@ -73,10 +73,12 @@ export function MonthlyHistory({ snapshots, showVendedores, onToggleVendedores }
                   <p className="text-xs uppercase tracking-wide">Meta</p>
                   <p className="mt-1 text-lg font-semibold text-gray-900">{snap.meta}</p>
                 </div>
-                <div className="rounded-lg bg-slate-50 p-3 col-span-2">
-                  <p className="text-xs uppercase tracking-wide">Facturación</p>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(snap.facturacion?.total ?? 0)}</p>
-                </div>
+                {snap.facturacion && (
+                  <div className="rounded-lg bg-slate-50 p-3 col-span-2">
+                    <p className="text-xs uppercase tracking-wide">Facturación</p>
+                    <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(snap.facturacion.total)}</p>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
                 <div className="rounded-lg bg-slate-50 p-3 text-center">

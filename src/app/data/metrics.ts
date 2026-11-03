@@ -41,3 +41,24 @@ export function toDateKey(date: Date): string {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+// "2026-11" -> "noviembre de 2026"
+export function nombreDeMes(periodo: string): string {
+  const [year, month] = periodo.split("-").map(Number);
+  return new Date(year, month - 1, 1, 12).toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+}
+
+// Periodos AAAA-MM desde `antes` meses atrás hasta `despues` meses adelante, del más reciente al más antiguo.
+export function periodosAlrededor(antes: number, despues: number, base = new Date()): string[] {
+  const periodos: string[] = [];
+  for (let i = despues; i >= -antes; i -= 1) {
+    const fecha = new Date(base.getFullYear(), base.getMonth() + i, 1, 12);
+    periodos.push(toDateKey(fecha).slice(0, 7));
+  }
+  return periodos;
+}
+
+export function mismoMesAnioAnterior(periodo: string): string {
+  const [year, month] = periodo.split("-");
+  return `${Number(year) - 1}-${month}`;
+}

@@ -1,11 +1,11 @@
 import { Card } from "./ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Users } from "lucide-react";
-import { allClients, type Client } from "../data/mockClients";
+import type { Client } from "../data/clientes";
 import { useId } from "react";
 import { parseDateKey, toDateKey } from "../data/metrics";
 
-export function CustomerTypeChart({ clients = allClients }: { clients?: Client[] } = {}) {
+export function CustomerTypeChart({ clients }: { clients: Client[] }) {
   const id = useId();
   const latestDateKey = clients.reduce(
     (latest, client) => (client.fecha > latest ? client.fecha : latest),

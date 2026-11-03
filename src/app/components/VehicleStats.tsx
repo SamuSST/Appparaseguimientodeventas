@@ -1,5 +1,5 @@
 import { Car, Bike, Truck } from "lucide-react";
-import { allClients, type Client } from "../data/mockClients";
+import type { Client } from "../data/clientes";
 import { roundedShares } from "../data/metrics";
 
 interface VehicleCategory {
@@ -11,7 +11,7 @@ interface VehicleCategory {
 }
 
 interface VehicleStatsProps {
-  clients?: Client[];
+  clients: Client[];
   onCategoryClick: (category: "carro" | "moto" | "pesado") => void;
 }
 
@@ -21,7 +21,7 @@ const vehicleTypes: VehicleCategory[] = [
   { type: "Pesados", count: 0, icon: Truck, color: "bg-orange-500", key: "pesado" },
 ];
 
-export function VehicleStats({ onCategoryClick, clients = allClients }: VehicleStatsProps) {
+export function VehicleStats({ onCategoryClick, clients }: VehicleStatsProps) {
   const vehicleData = vehicleTypes.map((vehicle) => ({
     ...vehicle,
     count: clients.filter((client) => client.tipoVehiculo === vehicle.key).length,

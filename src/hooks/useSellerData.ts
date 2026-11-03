@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { toDateKey } from "../app/data/metrics";
-import type { Client } from "../app/data/mockClients";
+import type { Client } from "../app/data/clientes";
 
 // El vendedor no ve ingresos, por eso no se pide la columna `ingreso`.
 export type Atencion = {
@@ -18,6 +18,8 @@ export type Atencion = {
   electrico: boolean;
   resultado: "Aprobada" | "Rechazada" | null;
   estado_reinspeccion: "Realizada" | "En plazo" | "Vencida" | null;
+  fecha_limite_reinspeccion: string | null;
+  carga_id: number | null;
   tiempo_atencion_min: number | null;
   pagado: boolean;
 };
@@ -25,14 +27,27 @@ export type Atencion = {
 export type MetasVendedor = {
   mensual: number | null;
   anual: number | null;
+  porMes: Record<string, number>; // "AAAA-MM" -> meta mensual
 };
 
 const COLUMNAS =
-  "id, fecha, hora, cliente_nombre, vehiculo, placa, marca, tipo_vehiculo, tipo_servicio, tipo_revision, electrico, tiempo_atencion_min, resultado, estado_reinspeccion, pagado";
+  "id, fecha, hora, cliente_nombre, vehiculo, placa, marca, tipo_vehiculo, tipo_servicio, tipo_revision, electrico, tiempo_atencion_min, resultado, estado_reinspeccion, fecha_limite_reinspeccion, carga_id, pagado";
 const PAGINA = 1000; // máximo de filas que Supabase devuelve por consulta
 
 // Las reinspecciones son gratis: no cuentan como atención ni como venta.
 export const esVenta = (a: Atencion) => a.tipo_revision !== "Reinspección";
+
+// Estado de la reinspección calculado con la fecha de hoy (el del Excel queda desactualizado con los días).
+export function estadoReinspeccion(a: Atencion, todas: Atencion[], hoy: string): "Realizada" | "En plazo" | "Vencida" | null {
+  if (a.tipo_revision !== "RTM" || a.resultado !== "Rechazada") return null;
+  const limite = a.fecha_limite_reinspeccion;
+  const volvio = todas.some(
+    (r) => r.tipo_revision === "Reinspección" && r.placa === a.placa && r.fecha > a.fecha && (!limite || r.fecha <= limite),
+  );
+  if (volvio) return "Realizada";
+  if (!limite) return a.estado_reinspeccion;
+  return limite >= hoy ? "En plazo" : "Vencida";
+}
 
 export function periodoMensual(date: Date) {
   return toDateKey(date).slice(0, 7);
@@ -40,7 +55,7 @@ export function periodoMensual(date: Date) {
 
 export function useSellerData(vendedorId: string | undefined) {
   const [atenciones, setAtenciones] = useState<Atencion[]>([]);
-  const [metas, setMetas] = useState<MetasVendedor>({ mensual: null, anual: null });
+  const [metas, setMetas] = useState<MetasVendedor>({ mensual: null, anual: null, porMes: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,8 +72,7 @@ export function useSellerData(vendedorId: string | undefined) {
       const metasRes = await supabase
         .from("metas")
         .select("tipo, periodo, meta")
-        .eq("vendedor_id", vendedorId)
-        .in("periodo", [mes, anio]);
+        .eq("vendedor_id", vendedorId);
       if (metasRes.error) throw metasRes.error;
 
       const todas: Atencion[] = [];
@@ -82,6 +96,7 @@ export function useSellerData(vendedorId: string | undefined) {
       setMetas({
         mensual: metasRes.data?.find((m) => m.tipo === "mensual" && m.periodo === mes)?.meta ?? null,
         anual: metasRes.data?.find((m) => m.tipo === "anual" && m.periodo === anio)?.meta ?? null,
+        porMes: Object.fromEntries((metasRes.data ?? []).filter((m) => m.tipo === "mensual").map((m) => [m.periodo, m.meta])),
       });
     } catch (err) {
       console.error("No se pudieron cargar los datos del vendedor:", err);
