@@ -5,14 +5,18 @@ import * as XLSX from "xlsx";
 import { supabase } from "../../lib/supabase";
 import { parseDateKey } from "../data/metrics";
 import { Card } from "./ui/card";
+import { ContactButtons } from "./ContactButtons";
+import { formatearTelefono, mensajeSeguimiento } from "../../lib/telefono";
 
 export type Reinspeccion = {
   atencion_id: number;
   vendedor_id: string | null;
   vendedor: string | null;
+  vendedor_telefono: string | null;
   fecha: string;
   placa: string;
   cliente_nombre: string | null;
+  cliente_telefono: string | null;
   marca: string | null;
   vehiculo: string | null;
   tipo_vehiculo: string | null;
@@ -25,11 +29,13 @@ export type Renovacion = {
   atencion_id: number;
   vendedor_id: string | null;
   vendedor: string | null;
+  vendedor_telefono: string | null;
   ultima_rtm: string;
   vence: string;
   dias_para_vencer: number;
   placa: string;
   cliente_nombre: string | null;
+  cliente_telefono: string | null;
   marca: string | null;
   vehiculo: string | null;
   tipo_vehiculo: string | null;
@@ -178,6 +184,8 @@ export function AdminFollowUpPanel() {
                       reinsVisibles.map((r) => ({
                         Vendedor: r.vendedor ?? "",
                         Cliente: r.cliente_nombre ?? "",
+                        "Celular cliente": formatearTelefono(r.cliente_telefono),
+                        "Celular vendedor": formatearTelefono(r.vendedor_telefono),
                         Placa: r.placa,
                         Vehículo: [r.marca, r.vehiculo].filter(Boolean).join(" "),
                         "Fecha RTM": r.fecha,
@@ -195,14 +203,26 @@ export function AdminFollowUpPanel() {
             </div>
             <Tabla
               vacio="No hay reinspecciones pendientes."
-              columnas={["Cliente", "Placa", "Vendedor", "Rechazada", "Plazo"]}
+              columnas={["Cliente", "Contacto", "Placa", "Vendedor", "Rechazada", "Plazo"]}
               filas={reinsVisibles.map((r) => ({
                 key: r.atencion_id,
                 rojo: r.estado === "Vencida",
                 celdas: [
                   r.cliente_nombre ?? "—",
+                  <ContactButtons
+                    key="c"
+                    telefono={r.cliente_telefono}
+                    mensaje={mensajeSeguimiento({
+                      tipo: "reinspeccion",
+                      cliente: r.cliente_nombre,
+                      placa: r.placa,
+                      fecha: fechaCorta(r.fecha_limite),
+                      vendedor: r.vendedor,
+                      vendedorTelefono: r.vendedor_telefono,
+                    })}
+                  />,
                   r.placa,
-                  r.vendedor ?? "—",
+                  <Vendedor key="v" nombre={r.vendedor} telefono={r.vendedor_telefono} />,
                   fechaCorta(r.fecha),
                   r.estado === "Vencida" ? `Venció ${fechaCorta(r.fecha_limite)}` : `Vence ${textoDias(r.dias_restantes, "en", "hace")}`,
                 ],
@@ -221,6 +241,8 @@ export function AdminFollowUpPanel() {
                     renovaciones.map((r) => ({
                       Vendedor: r.vendedor ?? "",
                       Cliente: r.cliente_nombre ?? "",
+                      "Celular cliente": formatearTelefono(r.cliente_telefono),
+                      "Celular vendedor": formatearTelefono(r.vendedor_telefono),
                       Placa: r.placa,
                       Vehículo: [r.marca, r.vehiculo].filter(Boolean).join(" "),
                       "Última RTM": r.ultima_rtm,
@@ -236,14 +258,26 @@ export function AdminFollowUpPanel() {
             </div>
             <Tabla
               vacio="No hay vehículos por renovar en este periodo. Si aún no cargaste los datos de 2025, súbelos para ver las renovaciones."
-              columnas={["Cliente", "Placa", "Vendedor", "Última RTM", "Vence"]}
+              columnas={["Cliente", "Contacto", "Placa", "Vendedor", "Última RTM", "Vence"]}
               filas={renovaciones.map((r) => ({
                 key: r.atencion_id,
                 rojo: r.dias_para_vencer < 0,
                 celdas: [
                   r.cliente_nombre ?? "—",
+                  <ContactButtons
+                    key="c"
+                    telefono={r.cliente_telefono}
+                    mensaje={mensajeSeguimiento({
+                      tipo: "renovacion",
+                      cliente: r.cliente_nombre,
+                      placa: r.placa,
+                      fecha: fechaCorta(r.vence),
+                      vendedor: r.vendedor,
+                      vendedorTelefono: r.vendedor_telefono,
+                    })}
+                  />,
                   r.placa,
-                  r.vendedor ?? "—",
+                  <Vendedor key="v" nombre={r.vendedor} telefono={r.vendedor_telefono} />,
                   fechaCorta(r.ultima_rtm),
                   `${fechaCorta(r.vence)} (${textoDias(r.dias_para_vencer, "en", "hace")})`,
                 ],
@@ -298,19 +332,32 @@ export function AdminFollowUpPanel() {
   );
 }
 
+function Vendedor({ nombre, telefono }: { nombre: string | null; telefono: string | null }) {
+  return (
+    <div>
+      <p>{nombre ?? "—"}</p>
+      {telefono && (
+        <a href={`tel:+57${telefono}`} className="font-mono text-xs text-blue-700 hover:underline">
+          {formatearTelefono(telefono)}
+        </a>
+      )}
+    </div>
+  );
+}
+
 function Tabla({
   columnas,
   filas,
   vacio,
 }: {
   columnas: string[];
-  filas: { key: number; rojo?: boolean; celdas: string[] }[];
+  filas: { key: number; rojo?: boolean; celdas: React.ReactNode[] }[];
   vacio: string;
 }) {
   if (filas.length === 0) return <p className="py-6 text-center text-sm text-gray-500">{vacio}</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] text-sm">
+      <table className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="border-b text-left text-xs uppercase text-gray-500">
             {columnas.map((c) => (

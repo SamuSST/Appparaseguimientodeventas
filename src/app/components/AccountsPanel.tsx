@@ -4,12 +4,14 @@ import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth";
 import { gestionarCuenta } from "../../lib/cuentas";
+import { formatearTelefono, limpiarTelefono } from "../../lib/telefono";
 import { Card } from "./ui/card";
 
 type Cuenta = {
   id: string;
   nombre: string;
   email: string;
+  telefono: string | null;
   rol: "admin" | "vendedor";
   activo: boolean;
   debe_cambiar_password: boolean;
@@ -20,7 +22,7 @@ export function AccountsPanel({ onChange }: { onChange: () => void }) {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [loading, setLoading] = useState(true);
   const [ocupado, setOcupado] = useState<string | null>(null);
-  const [editando, setEditando] = useState<{ id: string; nombre: string; email: string } | null>(null);
+  const [editando, setEditando] = useState<{ id: string; nombre: string; email: string; emailOriginal: string; nombreOriginal: string; telefono: string } | null>(null);
   const [nuevaPassword, setNuevaPassword] = useState<{ nombre: string; email: string; password: string; emailEnviado: boolean } | null>(null);
   const [verInactivas, setVerInactivas] = useState(true);
 
@@ -28,7 +30,7 @@ export function AccountsPanel({ onChange }: { onChange: () => void }) {
     setLoading(true);
     const { data, error } = await supabase
       .from("usuarios")
-      .select("id, nombre, email, rol, activo, debe_cambiar_password")
+      .select("id, nombre, email, telefono, rol, activo, debe_cambiar_password")
       .order("rol")
       .order("nombre");
     if (error) {
@@ -70,9 +72,19 @@ export function AccountsPanel({ onChange }: { onChange: () => void }) {
 
   const guardarEdicion = async () => {
     if (!editando) return;
+    const telefono = editando.telefono.trim() ? limpiarTelefono(editando.telefono) : null;
+    if (editando.telefono.trim() && !telefono) {
+      toast.error("Revisa el teléfono (7 a 10 dígitos).");
+      return;
+    }
     setOcupado(editando.id);
     try {
-      await gestionarCuenta("editar", editando.id, { nombre: editando.nombre, email: editando.email });
+      // Nombre y correo cambian también en la autenticación (función); el teléfono solo vive en la tabla usuarios.
+      if (editando.nombre.trim() !== editando.nombreOriginal || editando.email.trim().toLowerCase() !== editando.emailOriginal) {
+        await gestionarCuenta("editar", editando.id, { nombre: editando.nombre, email: editando.email });
+      }
+      const { error } = await supabase.from("usuarios").update({ telefono }).eq("id", editando.id);
+      if (error) throw new Error("No se pudo guardar el teléfono.");
       toast.success("Cuenta actualizada.");
       setEditando(null);
       await cargar();
@@ -157,7 +169,7 @@ export function AccountsPanel({ onChange }: { onChange: () => void }) {
             return (
               <li key={c.id} className={`py-3 ${c.activo ? "" : "opacity-70"}`}>
                 {enEdicion ? (
-                  <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
+                  <div className="grid gap-2 sm:grid-cols-[1fr_1fr_10rem_auto_auto] sm:items-end">
                     <label className="text-xs text-gray-600">
                       Nombre
                       <input value={editando.nombre} onChange={(e) => setEditando({ ...editando, nombre: e.target.value })} className={`mt-1 ${inputClass}`} />
@@ -165,6 +177,10 @@ export function AccountsPanel({ onChange }: { onChange: () => void }) {
                     <label className="text-xs text-gray-600">
                       Correo
                       <input type="email" value={editando.email} onChange={(e) => setEditando({ ...editando, email: e.target.value })} className={`mt-1 ${inputClass}`} />
+                    </label>
+                    <label className="text-xs text-gray-600">
+                      Celular
+                      <input type="tel" inputMode="tel" value={editando.telefono} onChange={(e) => setEditando({ ...editando, telefono: e.target.value })} className={`mt-1 ${inputClass}`} placeholder="300 123 4567" />
                     </label>
                     <button
                       type="button"
@@ -184,7 +200,10 @@ export function AccountsPanel({ onChange }: { onChange: () => void }) {
                       <p className="truncate font-medium text-gray-900">
                         {c.nombre} {soyYo && <span className="text-xs text-gray-500">(tú)</span>}
                       </p>
-                      <p className="truncate text-xs text-gray-500">{c.email}</p>
+                      <p className="truncate text-xs text-gray-500">
+                        {c.email}
+                        {c.telefono ? ` · ${formatearTelefono(c.telefono)}` : " · sin celular"}
+                      </p>
                       <div className="mt-1 flex flex-wrap gap-1">
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{c.rol === "admin" ? "Administrador" : "Vendedor"}</span>
                         <span className={`rounded-full px-2 py-0.5 text-xs ${c.activo ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
@@ -196,7 +215,9 @@ export function AccountsPanel({ onChange }: { onChange: () => void }) {
                     <div className="flex shrink-0 flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => setEditando({ id: c.id, nombre: c.nombre, email: c.email })}
+                        onClick={() =>
+                          setEditando({ id: c.id, nombre: c.nombre, email: c.email, nombreOriginal: c.nombre, emailOriginal: c.email, telefono: c.telefono ?? "" })
+                        }
                         disabled={ocupado !== null}
                         className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                       >

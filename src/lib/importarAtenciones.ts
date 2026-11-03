@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { limpiarTelefono } from "./telefono";
 
 // Fila lista para insertar en la tabla `atenciones` (sin vendedor_id ni carga_id).
 export type AtencionImportada = {
@@ -6,6 +7,7 @@ export type AtencionImportada = {
   fecha: string;
   hora: string | null;
   cliente_nombre: string | null;
+  cliente_telefono: string | null;
   placa: string;
   marca: string | null;
   vehiculo: string | null;
@@ -130,6 +132,7 @@ function convertirFila(raw: Record<string, unknown>): { fila?: AtencionImportada
       fecha,
       hora: leerHora(raw.hora),
       cliente_nombre: texto(raw.cliente_nombre),
+      cliente_telefono: limpiarTelefono(raw.cliente_telefono ?? raw.telefono ?? raw.celular),
       placa,
       marca: texto(raw.marca),
       vehiculo: texto(raw.vehiculo),

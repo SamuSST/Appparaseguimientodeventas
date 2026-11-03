@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../../lib/supabase";
 import { toDateKey } from "../../data/metrics";
+import { limpiarTelefono } from "../../../lib/telefono";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 
 type TipoVehiculo = "moto" | "carro" | "pesado";
@@ -11,6 +12,7 @@ const vacio = () => ({
   fecha: toDateKey(new Date()),
   hora: new Date().toTimeString().slice(0, 5),
   cliente_nombre: "",
+  cliente_telefono: "",
   placa: "",
   marca: "",
   vehiculo: "",
@@ -48,6 +50,11 @@ export function RegisterAttentionDialog({
       toast.error("Escribe la placa.");
       return;
     }
+    const telefono = form.cliente_telefono.trim() ? limpiarTelefono(form.cliente_telefono) : null;
+    if (form.cliente_telefono.trim() && !telefono) {
+      toast.error("Revisa el teléfono del cliente (7 a 10 dígitos).");
+      return;
+    }
     if (form.fecha > toDateKey(new Date())) {
       toast.error("La fecha no puede ser futura.");
       return;
@@ -59,6 +66,7 @@ export function RegisterAttentionDialog({
         fecha: form.fecha,
         hora: form.hora || null,
         cliente_nombre: form.cliente_nombre.trim() || null,
+        cliente_telefono: telefono,
         placa,
         marca: form.marca.trim() || null,
         vehiculo: form.vehiculo.trim() || null,
@@ -104,9 +112,20 @@ export function RegisterAttentionDialog({
             Hora
             <input type="time" value={form.hora} onChange={(e) => set("hora", e.target.value)} className={input} />
           </label>
-          <label className="text-xs text-gray-600 sm:col-span-2">
+          <label className="text-xs text-gray-600">
             Cliente
             <input value={form.cliente_nombre} onChange={(e) => set("cliente_nombre", e.target.value)} className={input} placeholder="Nombre o empresa" />
+          </label>
+          <label className="text-xs text-gray-600">
+            Celular del cliente
+            <input
+              type="tel"
+              inputMode="tel"
+              value={form.cliente_telefono}
+              onChange={(e) => set("cliente_telefono", e.target.value)}
+              className={input}
+              placeholder="300 123 4567"
+            />
           </label>
           <label className="text-xs text-gray-600">
             Placa

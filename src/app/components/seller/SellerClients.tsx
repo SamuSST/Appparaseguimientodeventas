@@ -6,6 +6,7 @@ import { Card } from "../ui/card";
 import { parseDateKey } from "../../data/metrics";
 import { estadoReinspeccion, type Atencion } from "../../../hooks/useSellerData";
 import { toDateKey } from "../../data/metrics";
+import { enlaceLlamar, formatearTelefono } from "../../../lib/telefono";
 
 const PAGINA = 20;
 
@@ -18,7 +19,7 @@ export function SellerClients({ atenciones, puedeBorrar = false, onCambio }: { a
   const texto = busqueda.trim().toLowerCase();
   const filtradas = texto
     ? atenciones.filter((a) =>
-        [a.placa, a.cliente_nombre, a.marca, a.vehiculo].some((campo) => campo?.toLowerCase().includes(texto)),
+        [a.placa, a.cliente_nombre, a.marca, a.vehiculo, a.cliente_telefono].some((campo) => campo?.toLowerCase().includes(texto)),
       )
     : atenciones;
 
@@ -58,7 +59,14 @@ export function SellerClients({ atenciones, puedeBorrar = false, onCambio }: { a
             {filtradas.slice(0, visibles).map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-gray-900">{a.cliente_nombre || "Cliente sin nombre"}</p>
+                  <p className="truncate font-medium text-gray-900">
+                    {a.cliente_nombre || "Cliente sin nombre"}
+                    {a.cliente_telefono && (
+                      <a href={enlaceLlamar(a.cliente_telefono)} className="ml-2 font-mono text-xs font-normal text-blue-700 hover:underline">
+                        {formatearTelefono(a.cliente_telefono)}
+                      </a>
+                    )}
+                  </p>
                   <p className="truncate text-xs text-gray-500">
                     <span className="font-mono font-semibold text-gray-700">{a.placa}</span>
                     {[a.marca, a.vehiculo, a.tipo_revision].filter(Boolean).map((d) => ` · ${d}`)}

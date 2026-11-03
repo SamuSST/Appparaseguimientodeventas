@@ -9,6 +9,7 @@ export type Atencion = {
   fecha: string;
   hora: string | null;
   cliente_nombre: string | null;
+  cliente_telefono: string | null;
   vehiculo: string | null;
   placa: string;
   marca: string | null;
@@ -31,7 +32,7 @@ export type MetasVendedor = {
 };
 
 const COLUMNAS =
-  "id, fecha, hora, cliente_nombre, vehiculo, placa, marca, tipo_vehiculo, tipo_servicio, tipo_revision, electrico, tiempo_atencion_min, resultado, estado_reinspeccion, fecha_limite_reinspeccion, carga_id, pagado";
+  "id, fecha, hora, cliente_nombre, cliente_telefono, vehiculo, placa, marca, tipo_vehiculo, tipo_servicio, tipo_revision, electrico, tiempo_atencion_min, resultado, estado_reinspeccion, fecha_limite_reinspeccion, carga_id, pagado";
 const PAGINA = 1000; // máximo de filas que Supabase devuelve por consulta
 
 // Las reinspecciones son gratis: no cuentan como atención ni como venta.

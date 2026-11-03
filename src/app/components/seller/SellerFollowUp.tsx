@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { supabase } from "../../../lib/supabase";
 import { Card } from "../ui/card";
 import { fechaCorta, textoDias, type Reinspeccion, type Renovacion } from "../AdminFollowUpPanel";
+import { ContactButtons } from "../ContactButtons";
+import { mensajeSeguimiento } from "../../../lib/telefono";
 
 // Clientes del vendedor a los que conviene llamar: rechazados que pueden volver gratis y RTM por renovar.
 export function SellerFollowUp({ vendedorId }: { vendedorId: string }) {
@@ -83,6 +85,19 @@ export function SellerFollowUp({ vendedorId }: { vendedorId: string }) {
                     <span className="font-mono font-semibold text-gray-700">{r.placa}</span>
                     {[r.marca, r.vehiculo].filter(Boolean).map((d) => ` · ${d}`)} · rechazada el {fechaCorta(r.fecha)}
                   </p>
+                  <div className="mt-1.5">
+                    <ContactButtons
+                      telefono={r.cliente_telefono}
+                      mensaje={mensajeSeguimiento({
+                        tipo: "reinspeccion",
+                        cliente: r.cliente_nombre,
+                        placa: r.placa,
+                        fecha: fechaCorta(r.fecha_limite),
+                        vendedor: r.vendedor,
+                        vendedorTelefono: r.vendedor_telefono,
+                      })}
+                    />
+                  </div>
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -118,6 +133,19 @@ export function SellerFollowUp({ vendedorId }: { vendedorId: string }) {
                     <span className="font-mono font-semibold text-gray-700">{r.placa}</span>
                     {[r.marca, r.vehiculo].filter(Boolean).map((d) => ` · ${d}`)} · última RTM {fechaCorta(r.ultima_rtm)}
                   </p>
+                  <div className="mt-1.5">
+                    <ContactButtons
+                      telefono={r.cliente_telefono}
+                      mensaje={mensajeSeguimiento({
+                        tipo: "renovacion",
+                        cliente: r.cliente_nombre,
+                        placa: r.placa,
+                        fecha: fechaCorta(r.vence),
+                        vendedor: r.vendedor,
+                        vendedorTelefono: r.vendedor_telefono,
+                      })}
+                    />
+                  </div>
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
