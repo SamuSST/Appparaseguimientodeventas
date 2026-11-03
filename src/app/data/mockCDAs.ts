@@ -23,10 +23,12 @@ export interface CDA {
   desempeñoPromedio: number; // porcentaje
 }
 
+export const CDA_LA_37_ID = 1;
+
 export const mockCDAs: CDA[] = [
   {
-    id: 1,
-    nombre: "CDA de la 37",
+    id: CDA_LA_37_ID,
+    nombre: "CDA La 37",
     ciudad: "Bogotá",
     direccion: "Carrera 37 #10-50, Bogotá",
     telefono: "+57 (1) 444-3737",

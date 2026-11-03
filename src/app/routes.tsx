@@ -8,7 +8,9 @@ import { Login } from "./components/Login";
 import { AdminCDAList } from "./components/AdminCDAList";
 import { CDAVendedoresList } from "./components/CDAVendedoresList";
 import { VendorDashboard } from "./components/VendorDashboard";
-import { RequireAdmin, RequireVendor } from "../lib/auth";
+import { SellerAccountDashboard } from "./components/SellerAccountDashboard";
+import { RequireAdmin, RequirePasswordUpdate, RequireVendor } from "../lib/auth";
+import { ChangeTemporaryPassword } from "./components/ChangeTemporaryPassword";
 
 function RouteError() {
   const error = useRouteError();
@@ -39,6 +41,16 @@ export const router = createHashRouter([
     path: "/",
     Component: Login,
     errorElement: <RouteError />,
+  },
+  {
+    Component: RequirePasswordUpdate,
+    errorElement: <RouteError />,
+    children: [
+      {
+        path: "/cambiar-password",
+        Component: ChangeTemporaryPassword,
+      },
+    ],
   },
   {
     Component: RequireAdmin,
@@ -75,7 +87,7 @@ export const router = createHashRouter([
     children: [
       {
         index: true,
-        Component: VendorDashboard,
+        Component: SellerAccountDashboard,
       },
     ],
   },

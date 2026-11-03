@@ -15,6 +15,7 @@ export type Perfil = {
   email: string;
   rol: "admin" | "vendedor";
   activo: boolean;
+  debe_cambiar_password: boolean;
 };
 
 type AuthState = {
@@ -22,6 +23,7 @@ type AuthState = {
   perfil: Perfil | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<Perfil>;
+  changeTemporaryPassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -30,13 +32,11 @@ const AuthContext = createContext<AuthState | null>(null);
 async function cargarPerfil(userId: string): Promise<Perfil | null> {
   const { data, error } = await supabase
     .from("usuarios")
-    .select("id, nombre, email, rol, activo")
+    .select("id, nombre, email, rol, activo, debe_cambiar_password")
     .eq("id", userId)
     .maybeSingle();
-
   if (error) {
-    console.error("No se pudo cargar el perfil:", error.message);
-    return null;
+    throw error;
   }
   return data as Perfil | null;
 }
@@ -78,6 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelado) return;
       setPerfil(p && p.activo ? p : null);
       setPerfilReady(true);
+    }).catch((error: unknown) => {
+      if (cancelado) return;
+      console.error("No se pudo cargar el perfil:", error);
+      setPerfil(null);
+      setPerfilReady(true);
     });
     return () => {
       cancelado = true;
@@ -88,13 +93,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    const p = await cargarPerfil(data.user.id);
+    let p: Perfil | null;
+    try {
+      p = await cargarPerfil(data.user.id);
+    } catch (profileError) {
+      await supabase.auth.signOut();
+      throw profileError;
+    }
     if (!p || !p.activo) {
       await supabase.auth.signOut();
       throw new Error("SIN_PERFIL");
     }
     setPerfil(p);
     return p;
+  };
+
+  const changeTemporaryPassword: AuthState["changeTemporaryPassword"] = async (password) => {
+    const { error } = await supabase.functions.invoke("cambiar-password-temporal", {
+      body: { password },
+    });
+    if (error) throw error;
+
+    setPerfil((actual) =>
+      actual ? { ...actual, debe_cambiar_password: false } : actual,
+    );
   };
 
   const signOut: AuthState["signOut"] = async () => {
@@ -109,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         perfil,
         loading: !sessionReady || !perfilReady,
         signIn,
+        changeTemporaryPassword,
         signOut,
       }}
     >
@@ -138,6 +161,9 @@ function Cargando() {
 export function RequireAdmin() {
   const { perfil, loading } = useAuth();
   if (loading) return <Cargando />;
+  if (perfil?.debe_cambiar_password) {
+    return <Navigate to="/cambiar-password" replace />;
+  }
   return perfil?.rol === "admin" ? <Outlet /> : <Navigate to="/" replace />;
 }
 
@@ -145,17 +171,37 @@ export function RequireVendor() {
   const { vendedorId } = useParams();
   const { perfil, loading } = useAuth();
   if (loading) return <Cargando />;
+  if (perfil?.debe_cambiar_password) {
+    return <Navigate to="/cambiar-password" replace />;
+  }
 
   // El vendedor solo entra a su propio panel; el admin puede ver el de cualquiera.
   const autorizado = !!perfil && (perfil.rol === "admin" || perfil.id === vendedorId);
   return autorizado ? <Outlet /> : <Navigate to="/" replace />;
 }
 
+export function RequirePasswordUpdate() {
+  const { perfil, loading } = useAuth();
+  if (loading) return <Cargando />;
+  if (!perfil) return <Navigate to="/" replace />;
+  if (!perfil.debe_cambiar_password) {
+    return <Navigate to={perfil.rol === "admin" ? "/admin" : `/vendedor/${perfil.id}`} replace />;
+  }
+  return <Outlet />;
+}
+
 // Traduce los errores de Supabase a mensajes para el usuario.
 export function mensajeDeError(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err);
+  const msg = err instanceof Error
+    ? err.message
+    : typeof err === "object" && err !== null && "message" in err && typeof err.message === "string"
+      ? err.message
+      : String(err);
   if (msg === "SIN_PERFIL") {
     return "Tu usuario existe, pero no tiene acceso a la app. Pídele al administrador que lo active.";
+  }
+  if (msg.includes("debe_cambiar_password")) {
+    return "Falta actualizar la base de datos. Pídele al administrador que aplique la migración de cuentas.";
   }
   if (msg.includes("Invalid login credentials")) {
     return "Correo o contraseña incorrectos.";

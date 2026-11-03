@@ -54,79 +54,65 @@ export function VendorListPanel({ cda, duplicateVendorNames }: VendorListPanelPr
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-3">
         {cda.vendedores
           .slice()
-          .sort((a, b) => b.desempeñoMensual - a.desempeñoMensual)
+          .sort(
+            (a, b) =>
+              b.desempeñoMensual - a.desempeñoMensual || a.nombre.localeCompare(b.nombre, "es"),
+          )
           .map((vendedor, index) => (
             <Card
               key={vendedor.id}
-              className="p-4 cursor-pointer hover:shadow-lg transition-all active:scale-98"
+              className="p-3 sm:p-4 cursor-pointer hover:shadow-lg transition-all active:scale-98"
               onClick={() => navigate(`/cda/${cda.id}/vendedor/${vendedor.id}`)}
             >
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-center gap-3">
                 <div
-                  className={`w-12 h-12 rounded-full ${getAvatarColor(vendedor.id)} flex items-center justify-center text-white font-bold shrink-0`}
+                  className="w-9 h-9 rounded-lg bg-gray-100 text-gray-700 flex items-center justify-center text-sm font-bold shrink-0"
+                >
+                  #{index + 1}
+                </div>
+                <div
+                  className={`w-10 h-10 rounded-full ${getAvatarColor(vendedor.id)} flex items-center justify-center text-white font-bold shrink-0`}
                 >
                   {getInitials(vendedor.nombre)}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-1">
-                    <div>
-                      <h3 className="font-bold text-gray-900">{vendedor.nombre}</h3>
-                      {index === 0 && (
-                        <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded mt-1">
-                          🏆 Top Vendedor
-                        </span>
-                      )}
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
-                  </div>
-
-                  <div className="space-y-1 text-xs text-gray-600 mb-2">
-                    <div className="flex items-center gap-1">
-                      <Mail className="w-3 h-3" />
+                  <h3 className="font-bold text-gray-900 truncate">{vendedor.nombre}</h3>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 mt-1">
+                    <span className="flex items-center gap-1 min-w-0">
+                      <Mail className="w-3 h-3 shrink-0" />
                       <span className="truncate">{vendedor.email}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Phone className="w-3 h-3" />
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3 h-3 shrink-0" />
                       <span>{vendedor.telefono}</span>
-                    </div>
+                    </span>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <div className="bg-blue-50 rounded-lg p-2">
-                  <div className="flex items-center gap-1 mb-1">
-                    <Target className="w-3 h-3 text-blue-600" />
-                    <p className="text-xs text-gray-600">Meta Mensual</p>
+                <div className="w-28 sm:w-40 shrink-0">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-gray-600 hidden sm:inline">Desempeño</span>
+                    <span className="font-bold text-gray-900">
+                      {percentageLabel(vendedor.desempeñoMensual)}
+                    </span>
                   </div>
-                  <p className="text-lg font-bold text-gray-900">{vendedor.metaMensual}</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-2">
-                  <div className="flex items-center gap-1 mb-1">
-                    <TrendingUp className="w-3 h-3 text-green-600" />
-                    <p className="text-xs text-gray-600">Desempeño</p>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden mt-1">
+                    <div
+                      className={`h-full ${getStatusColor(vendedor.desempeñoMensual)} transition-all`}
+                      style={{ width: `${percentageWidth(vendedor.desempeñoMensual)}%` }}
+                    />
                   </div>
-                  <p className="text-lg font-bold text-gray-900">{percentageLabel(vendedor.desempeñoMensual)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-600">Progreso del mes</span>
-                  <span className="font-semibold text-gray-900">
+                  <p className="text-xs text-gray-500 text-right mt-1">
+                    <Target className="w-3 h-3 inline mr-1" />
                     {Math.round((vendedor.metaMensual * vendedor.desempeñoMensual) / 100)}/{vendedor.metaMensual}
-                  </span>
+                  </p>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${getStatusColor(vendedor.desempeñoMensual)} transition-all`}
-                    style={{ width: `${percentageWidth(vendedor.desempeñoMensual)}%` }}
-                  />
-                </div>
+
+                <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
               </div>
             </Card>
           ))}

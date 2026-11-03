@@ -1,11 +1,11 @@
 import { Card } from "./ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Clock } from "lucide-react";
-import { allClients } from "../data/mockClients";
+import { allClients, type Client } from "../data/mockClients";
 
-export function PeakHoursChart() {
+export function PeakHoursChart({ clients = allClients }: { clients?: Client[] } = {}) {
   // Agrupar clientes por franja horaria
-  const hourlyData = allClients.reduce((acc, client) => {
+  const hourlyData = clients.reduce((acc, client) => {
     if (!client.hora) return acc;
     
     const hour = parseInt(client.hora.split(":")[0]);

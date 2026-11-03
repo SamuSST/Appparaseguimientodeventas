@@ -1,5 +1,5 @@
 import { Car, Bike, Truck } from "lucide-react";
-import { allClients } from "../data/mockClients";
+import { allClients, type Client } from "../data/mockClients";
 import { roundedShares } from "../data/metrics";
 
 interface VehicleCategory {
@@ -11,6 +11,7 @@ interface VehicleCategory {
 }
 
 interface VehicleStatsProps {
+  clients?: Client[];
   onCategoryClick: (category: "carro" | "moto" | "pesado") => void;
 }
 
@@ -20,10 +21,10 @@ const vehicleTypes: VehicleCategory[] = [
   { type: "Pesados", count: 0, icon: Truck, color: "bg-orange-500", key: "pesado" },
 ];
 
-export function VehicleStats({ onCategoryClick }: VehicleStatsProps) {
+export function VehicleStats({ onCategoryClick, clients = allClients }: VehicleStatsProps) {
   const vehicleData = vehicleTypes.map((vehicle) => ({
     ...vehicle,
-    count: allClients.filter((client) => client.tipoVehiculo === vehicle.key).length,
+    count: clients.filter((client) => client.tipoVehiculo === vehicle.key).length,
   }));
   const total = vehicleData.reduce((sum, item) => sum + item.count, 0);
   const percentages = roundedShares(vehicleData.map((vehicle) => vehicle.count));

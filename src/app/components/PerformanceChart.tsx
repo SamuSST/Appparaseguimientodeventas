@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { allClients } from "../data/mockClients";
+import { allClients, type Client } from "../data/mockClients";
 import { parseDateKey, toDateKey } from "../data/metrics";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
@@ -9,76 +9,85 @@ import { Button } from "./ui/button";
 type View = "week" | "month" | "year";
 type ChartPoint = { periodo: string; actual: number; anterior: number };
 
-const dateCounts = allClients.reduce<Record<string, number>>((counts, client) => {
-  counts[client.fecha] = (counts[client.fecha] ?? 0) + 1;
-  return counts;
-}, {});
+function calcularDatos(clients: Client[]) {
+  const dateCounts = clients.reduce<Record<string, number>>((counts, client) => {
+    counts[client.fecha] = (counts[client.fecha] ?? 0) + 1;
+    return counts;
+  }, {});
 
-const yearlyCounts = allClients.reduce<Record<number, number>>((counts, client) => {
-  const year = parseDateKey(client.fecha).getFullYear();
-  counts[year] = (counts[year] ?? 0) + 1;
-  return counts;
-}, {});
+  const yearlyCounts = clients.reduce<Record<number, number>>((counts, client) => {
+    const year = parseDateKey(client.fecha).getFullYear();
+    counts[year] = (counts[year] ?? 0) + 1;
+    return counts;
+  }, {});
 
-const latestDateKey = allClients.reduce(
-  (latest, client) => (client.fecha > latest ? client.fecha : latest),
-  "",
-);
-const latestDate = latestDateKey ? parseDateKey(latestDateKey) : new Date();
-const latestYear = latestDate.getFullYear();
-const previousYear = latestYear - 1;
-const latestMonth = latestDate.getMonth();
-
-function countMonth(year: number, month: number): number {
-  const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
-  return Object.entries(dateCounts).reduce(
-    (total, [date, count]) => total + (date.startsWith(prefix) ? count : 0),
-    0,
+  const latestDateKey = clients.reduce(
+    (latest, client) => (client.fecha > latest ? client.fecha : latest),
+    "",
   );
-}
+  const latestDate = latestDateKey ? parseDateKey(latestDateKey) : new Date();
+  const latestYear = latestDate.getFullYear();
+  const previousYear = latestYear - 1;
+  const latestMonth = latestDate.getMonth();
 
-function countDate(date: Date): number {
-  return dateCounts[toDateKey(date)] ?? 0;
-}
+  function countMonth(year: number, month: number): number {
+    const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+    return Object.entries(dateCounts).reduce(
+      (total, [date, count]) => total + (date.startsWith(prefix) ? count : 0),
+      0,
+    );
+  }
 
-const weekData: ChartPoint[] = Array.from({ length: 7 }, (_, index) => {
-  const date = new Date(latestDate);
-  date.setDate(latestDate.getDate() - 6 + index);
-  const previousDate = new Date(date);
-  previousDate.setDate(date.getDate() - 7);
-  return {
-    periodo: date.toLocaleDateString("es-CO", { weekday: "short" }),
-    actual: countDate(date),
-    anterior: countDate(previousDate),
+  function countDate(date: Date): number {
+    return dateCounts[toDateKey(date)] ?? 0;
+  }
+
+  const weekData: ChartPoint[] = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(latestDate);
+    date.setDate(latestDate.getDate() - 6 + index);
+    const previousDate = new Date(date);
+    previousDate.setDate(date.getDate() - 7);
+    return {
+      periodo: date.toLocaleDateString("es-CO", { weekday: "short" }),
+      actual: countDate(date),
+      anterior: countDate(previousDate),
+    };
+  });
+
+  const monthData: ChartPoint[] = Array.from({ length: latestMonth + 1 }, (_, index) => ({
+    periodo: new Date(latestYear, index, 1, 12).toLocaleDateString("es-CO", { month: "short" }),
+    actual: countMonth(latestYear, index),
+    anterior: countMonth(previousYear, index),
+  }));
+
+  const availableYears = Object.keys(yearlyCounts).map(Number).sort((a, b) => a - b);
+  const yearData: ChartPoint[] = availableYears.map((year) => ({
+    periodo: String(year),
+    actual: yearlyCounts[year] ?? 0,
+    anterior: yearlyCounts[year - 1] ?? 0,
+  }));
+
+  const comparisonAvailableByView: Record<View, boolean> = {
+    week: weekData.some((point) => point.anterior > 0),
+    month: monthData.some((point) => point.anterior > 0),
+    year: yearData.some((point) => point.anterior > 0),
   };
-});
 
-const monthData: ChartPoint[] = Array.from({ length: latestMonth + 1 }, (_, index) => ({
-  periodo: new Date(latestYear, index, 1, 12).toLocaleDateString("es-CO", { month: "short" }),
-  actual: countMonth(latestYear, index),
-  anterior: countMonth(previousYear, index),
-}));
+  return { latestYear, previousYear, weekData, monthData, yearData, comparisonAvailableByView };
+}
 
-const availableYears = Object.keys(yearlyCounts).map(Number).sort((a, b) => a - b);
-const yearData: ChartPoint[] = availableYears.map((year) => ({
-  periodo: String(year),
-  actual: yearlyCounts[year] ?? 0,
-  anterior: yearlyCounts[year - 1] ?? 0,
-}));
-
-const comparisonAvailableByView: Record<View, boolean> = {
-  week: weekData.some((point) => point.anterior > 0),
-  month: monthData.some((point) => point.anterior > 0),
-  year: yearData.some((point) => point.anterior > 0),
-};
-
-export function PerformanceChart() {
+// compararAnios: en el panel del vendedor solo se compara por semana y por mes.
+export function PerformanceChart({ clients = allClients, compararAnios = true }: { clients?: Client[]; compararAnios?: boolean } = {}) {
+  const { latestYear, previousYear, weekData, monthData, yearData, comparisonAvailableByView } = useMemo(
+    () => calcularDatos(clients),
+    [clients],
+  );
   const [showComparison, setShowComparison] = useState(false);
   const [view, setView] = useState<View>("week");
   const chartData = view === "week" ? weekData : view === "month" ? monthData : yearData;
   const total = chartData.reduce((sum, point) => sum + point.actual, 0);
   const comparisonTotal = chartData.reduce((sum, point) => sum + point.anterior, 0);
-  const comparisonAvailable = comparisonAvailableByView[view];
+  const comparisonAvailable = comparisonAvailableByView[view] && (compararAnios || view !== "year");
   const mainColor = view === "week" ? "#3b82f6" : view === "month" ? "#10b981" : "#8b5cf6";
   const mainLabel = view === "week"
     ? "Últimos 7 días"

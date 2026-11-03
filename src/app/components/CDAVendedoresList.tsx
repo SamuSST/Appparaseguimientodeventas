@@ -5,12 +5,15 @@ import { useCDAData } from "../../hooks/useCDAData";
 import { VendorListPanel } from "./VendorListPanel";
 import logo from "figma:asset/9b6752e4935d81eb0c34c840e006a7ba641d4c8e.png";
 import { percentageLabel, percentageOf } from "../data/metrics";
+import { CDA_LA_37_ID } from "../data/mockCDAs";
 
 export function CDAVendedoresList() {
   const navigate = useNavigate();
   const { cdas } = useCDAData();
   const { cdaId } = useParams();
-  const cda = cdas.find((item) => item.id === Number(cdaId));
+  const cda = Number(cdaId) === CDA_LA_37_ID
+    ? cdas.find((item) => item.id === CDA_LA_37_ID)
+    : undefined;
 
   const duplicateVendorNames = useMemo(() => {
     if (!cda) return [];
@@ -64,7 +67,7 @@ export function CDAVendedoresList() {
             className="flex items-center gap-2 mb-3 text-blue-100 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm">Volver a CDAs</span>
+            <span className="text-sm">Volver al panel</span>
           </button>
 
           <h1 className="text-xl font-bold mb-1">{cda.nombre}</h1>

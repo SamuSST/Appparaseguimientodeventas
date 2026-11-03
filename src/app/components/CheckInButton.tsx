@@ -5,8 +5,41 @@ import { Button } from "./ui/button";
 import { toast } from "sonner";
 
 interface CheckInButtonProps {
-  vendedorId: number;
+  // Número en los datos de ejemplo; UUID de Supabase en el panel real.
+  vendedorId: number | string;
   onCheckIn: (ubicacion: { lat: number; lng: number; direccion: string }, foto?: string, notas?: string) => void;
+}
+
+// Dirección legible (calle y barrio) con OpenStreetMap Nominatim, que es gratuito para poco volumen.
+// Si no responde en unos segundos, se guardan las coordenadas.
+async function obtenerDireccion(lat: number, lng: number) {
+  const coordenadas = `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&accept-language=es`,
+      { signal: controller.signal },
+    );
+    if (!response.ok) return coordenadas;
+    const data = (await response.json()) as {
+      display_name?: string;
+      address?: Record<string, string | undefined>;
+    };
+    const a = data.address ?? {};
+    const calle = [a.road, a.house_number].filter(Boolean).join(" ");
+    // En Bogotá OSM a veces trae "UPZs de Bogotá" como barrio; ahí es más útil la localidad.
+    const barrio = a.neighbourhood && !/^UPZ/i.test(a.neighbourhood) ? a.neighbourhood : undefined;
+    const zona = barrio || a.suburb || a.city_district;
+    const ciudad = (a.city || a.town || a.village)?.replace(/ ciudad$/i, "");
+    const partes = [calle, zona, ciudad].filter(Boolean);
+    return partes.length ? partes.join(", ") : data.display_name || coordenadas;
+  } catch (error) {
+    console.error("No se pudo obtener la dirección de la visita:", error);
+    return coordenadas;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function CheckInButton({ vendedorId, onCheckIn }: CheckInButtonProps) {
@@ -16,7 +49,10 @@ export function CheckInButton({ vendedorId, onCheckIn }: CheckInButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleGetLocation = () => {
-    if (!Number.isFinite(vendedorId) || vendedorId <= 0) {
+    const vendedorValido = typeof vendedorId === "number"
+      ? Number.isFinite(vendedorId) && vendedorId > 0
+      : vendedorId.length > 0;
+    if (!vendedorValido) {
       toast.error("No se pudo identificar al vendedor. Vuelve a iniciar sesión.");
       return;
     }
@@ -28,45 +64,59 @@ export function CheckInButton({ vendedorId, onCheckIn }: CheckInButtonProps) {
       return;
     }
 
+    const handleSuccess = async (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      const direccion = await obtenerDireccion(latitude, longitude);
+
+      onCheckIn(
+        { lat: latitude, lng: longitude, direccion },
+        capturedPhoto || undefined,
+        notas || undefined
+      );
+
+      // Reset
+      setCapturedPhoto(null);
+      setNotas("");
+      setIsCapturing(false);
+    };
+
+    const handleError = (error: GeolocationPositionError) => {
+      let errorMessage = "No se pudo obtener la ubicación";
+
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage = "Debes permitir el acceso a tu ubicación en la configuración del navegador";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = "No se puede determinar tu ubicación en este momento";
+          break;
+        case error.TIMEOUT:
+          errorMessage = "Se agotó el tiempo de espera para obtener la ubicación. Activa el GPS o la ubicación del equipo e inténtalo de nuevo.";
+          break;
+      }
+
+      toast.error(errorMessage);
+      setIsCapturing(false);
+    };
+
+    // Primero se intenta con GPS (alta precisión). Si no responde a tiempo, como pasa en
+    // computadores o en interiores, se reintenta con la ubicación por red/Wi-Fi.
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-
-        // Simulamos la geocodificación inversa (en producción usar una API real)
-        const direccion = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`;
-
-        onCheckIn(
-          { lat: latitude, lng: longitude, direccion },
-          capturedPhoto || undefined,
-          notas || undefined
-        );
-
-        // Reset
-        setCapturedPhoto(null);
-        setNotas("");
-        setIsCapturing(false);
-      },
+      (position) => void handleSuccess(position),
       (error) => {
-        let errorMessage = "No se pudo obtener la ubicación";
-
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = "Debes permitir el acceso a tu ubicación en la configuración del navegador";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = "No se puede determinar tu ubicación en este momento";
-            break;
-          case error.TIMEOUT:
-            errorMessage = "Se agotó el tiempo de espera para obtener la ubicación";
-            break;
+        if (error.code === error.PERMISSION_DENIED) {
+          handleError(error);
+          return;
         }
-
-        toast.error(errorMessage);
-        setIsCapturing(false);
+        navigator.geolocation.getCurrentPosition((position) => void handleSuccess(position), handleError, {
+          enableHighAccuracy: false,
+          timeout: 20000,
+          maximumAge: 5 * 60 * 1000,
+        });
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0
       }
     );

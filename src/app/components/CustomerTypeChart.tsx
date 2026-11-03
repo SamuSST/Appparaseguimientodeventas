@@ -1,18 +1,18 @@
 import { Card } from "./ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Users } from "lucide-react";
-import { allClients } from "../data/mockClients";
+import { allClients, type Client } from "../data/mockClients";
 import { useId } from "react";
 import { parseDateKey, toDateKey } from "../data/metrics";
 
-export function CustomerTypeChart() {
+export function CustomerTypeChart({ clients = allClients }: { clients?: Client[] } = {}) {
   const id = useId();
-  const latestDateKey = allClients.reduce(
+  const latestDateKey = clients.reduce(
     (latest, client) => (client.fecha > latest ? client.fecha : latest),
     "",
   );
   const latestDate = latestDateKey ? parseDateKey(latestDateKey) : new Date();
-  const dateData = allClients.reduce<Record<string, { recurrentes: number; nuevos: number }>>((acc, client) => {
+  const dateData = clients.reduce<Record<string, { recurrentes: number; nuevos: number }>>((acc, client) => {
     const date = client.fecha;
     if (!acc[date]) acc[date] = { recurrentes: 0, nuevos: 0 };
     if (client.esRecurrente) {

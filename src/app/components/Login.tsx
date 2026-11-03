@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Card } from "./ui/card";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
@@ -8,12 +8,24 @@ import { useAuth, mensajeDeError } from "../../lib/auth";
 
 export function Login() {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, perfil, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (authLoading || !perfil) return;
+    navigate(
+      perfil.debe_cambiar_password
+        ? "/cambiar-password"
+        : perfil.rol === "admin"
+          ? "/admin"
+          : `/vendedor/${perfil.id}`,
+      { replace: true },
+    );
+  }, [authLoading, navigate, perfil]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +38,11 @@ export function Login() {
       const perfil = await signIn(email.trim().toLowerCase(), password);
 
       navigate(
-        perfil.rol === "admin" ? "/admin" : `/vendedor/${perfil.id}`,
+        perfil.debe_cambiar_password
+          ? "/cambiar-password"
+          : perfil.rol === "admin"
+            ? "/admin"
+            : `/vendedor/${perfil.id}`,
         { replace: true },
       );
     } catch (loginError) {

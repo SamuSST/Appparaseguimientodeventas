@@ -1,7 +1,7 @@
 import { Card } from "./ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Timer } from "lucide-react";
-import { allClients } from "../data/mockClients";
+import { allClients, type Client } from "../data/mockClients";
 
 const COLORS = {
   moto: "#10b981",
@@ -9,9 +9,9 @@ const COLORS = {
   pesado: "#ef4444",
 };
 
-export function ServiceTimeChart() {
+export function ServiceTimeChart({ clients = allClients }: { clients?: Client[] } = {}) {
   // Calcular tiempo promedio por tipo de vehículo
-  const timeData = allClients.reduce((acc, client) => {
+  const timeData = clients.reduce((acc, client) => {
     const tipo = client.tipoVehiculo;
     const tiempo = client.tiempoAtencion || 0;
     

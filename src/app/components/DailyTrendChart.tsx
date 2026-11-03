@@ -1,16 +1,16 @@
 import { Card } from "./ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp } from "lucide-react";
-import { allClients } from "../data/mockClients";
+import { allClients, type Client } from "../data/mockClients";
 import { parseDateKey, toDateKey } from "../data/metrics";
 
-export function DailyTrendChart() {
-  const dailyData = allClients.reduce((acc, client) => {
+export function DailyTrendChart({ clients = allClients }: { clients?: Client[] } = {}) {
+  const dailyData = clients.reduce((acc, client) => {
     acc[client.fecha] = (acc[client.fecha] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const latestDateKey = allClients.reduce(
+  const latestDateKey = clients.reduce(
     (latest, client) => (client.fecha > latest ? client.fecha : latest),
     "",
   );

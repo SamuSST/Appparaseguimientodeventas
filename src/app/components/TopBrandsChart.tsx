@@ -1,14 +1,14 @@
 import { Card } from "./ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { Award } from "lucide-react";
-import { allClients } from "../data/mockClients";
+import { allClients, type Client } from "../data/mockClients";
 import { roundedShares } from "../data/metrics";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
-export function TopBrandsChart() {
+export function TopBrandsChart({ clients = allClients }: { clients?: Client[] } = {}) {
   // Contar vehículos por marca
-  const brandCounts = allClients.reduce((acc, client) => {
+  const brandCounts = clients.reduce((acc, client) => {
     if (!client.marca) return acc;
     
     acc[client.marca] = (acc[client.marca] || 0) + 1;

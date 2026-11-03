@@ -1,6 +1,6 @@
 import { Badge } from "./ui/badge";
 import { Car, Bike, Truck } from "lucide-react";
-import { allClients } from "../data/mockClients";
+import { allClients, type Client } from "../data/mockClients";
 import { parseDateKey } from "../data/metrics";
 
 const vehicleIcons = {
@@ -9,8 +9,8 @@ const vehicleIcons = {
   pesado: Truck,
 };
 
-export function ClientList() {
-  const recentClients = [...allClients]
+export function ClientList({ clients = allClients }: { clients?: Client[] } = {}) {
+  const recentClients = [...clients]
     .sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.hora ?? "").localeCompare(a.hora ?? ""))
     .slice(0, 5);
 
