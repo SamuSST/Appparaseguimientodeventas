@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Eye, LogOut, Plus, RefreshCw } from "lucide-react";
+import { ArrowLeft, Eye, LogOut, RefreshCw } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { useAuth } from "../../lib/auth";
@@ -10,7 +10,6 @@ import { toDateKey } from "../data/metrics";
 import { BottomNav, type SellerTab } from "./BottomNav";
 import { MonthlyHistory, type MonthlySnapshot } from "./MonthlyHistory";
 import { SellerFollowUp } from "./seller/SellerFollowUp";
-import { RegisterAttentionDialog } from "./seller/RegisterAttentionDialog";
 import { nombreDeMes, percentageOf, periodosAlrededor } from "../data/metrics";
 import { SellerSummary } from "./seller/SellerSummary";
 import { PerformanceChart } from "./PerformanceChart";
@@ -79,7 +78,6 @@ export function SellerAccountDashboard() {
   const clientes = useMemo(() => todosLosClientes.filter((c) => c.fecha.startsWith(anioActual)), [todosLosClientes, anioActual]);
   const atencionesAnio = useMemo(() => atenciones.filter((a) => a.fecha.startsWith(anioActual)), [atenciones, anioActual]);
   const [sheet, setSheet] = useState<{ titulo: string; clientes: Client[] } | null>(null);
-  const [registrando, setRegistrando] = useState(false);
 
   // Historial de los últimos 12 meses (sin valores en pesos).
   const historial = useMemo<MonthlySnapshot[]>(
@@ -249,15 +247,6 @@ export function SellerAccountDashboard() {
                   Aún no tienes atenciones registradas este año. Tus números aparecerán aquí a medida que se carguen tus ventas.
                 </div>
               )}
-              {!esAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setRegistrando(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-md hover:bg-blue-700 sm:w-auto"
-                >
-                  <Plus className="h-5 w-5" /> Registrar atención
-                </button>
-              )}
               <SellerSummary atenciones={atencionesAnio} metas={metas} hoy={hoy} mes={mes} />
               {/* Gráficos originales del diseño de Figma, ahora con los datos de Supabase. */}
               <PerformanceChart clients={todosLosClientes} compararAnios={false} />
@@ -273,7 +262,7 @@ export function SellerAccountDashboard() {
                 <TopBrandsChart clients={clientes} />
               </div>
               <ClientList clients={clientes} />
-              <SellerClients key={vendedorId} atenciones={atencionesAnio} puedeBorrar={!esAdmin} onCambio={() => void recargar()} />
+              <SellerClients key={vendedorId} atenciones={atencionesAnio} />
               <div className="-mx-4 md:-mx-6 lg:-mx-8">
                 <MonthlyHistory snapshots={historial} />
               </div>
@@ -289,15 +278,6 @@ export function SellerAccountDashboard() {
       )}
 
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-
-      {!esAdmin && (
-        <RegisterAttentionDialog
-          vendedorId={vendedorId}
-          open={registrando}
-          onOpenChange={setRegistrando}
-          onSaved={() => void recargar()}
-        />
-      )}
 
       <ClientDetailsSheet
         open={!!sheet}
